@@ -7,44 +7,65 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; user-select: none; }
+        body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; }
         canvas { display: block; }
         
-        /* --- МЕНЮ --- */
-        #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 100; }
+        /* --- АВТОРИЗАЦИЯ --- */
+        #authScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 200; }
+        .input-box { padding: 12px; margin: 5px; font-size: 16px; border-radius: 5px; border: 1px solid #555; background: #222; color: white; width: 250px; text-align: center; }
+        
+        /* --- МЕНЮ И МАГАЗИН --- */
+        #menu, #shopMenu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 100; }
         #menu h1 { color: #ffcc00; font-size: 40px; text-shadow: 2px 2px 5px #000; margin-bottom: 5px;}
         #menu p { font-size: 20px; margin: 5px 0; }
-        .btn { padding: 15px 30px; margin: 5px; font-size: 18px; border: none; border-radius: 5px; background: #ffcc00; color: black; font-weight: bold; cursor: pointer; width: 250px; }
+        .btn { padding: 12px 20px; margin: 5px; font-size: 16px; border: none; border-radius: 5px; background: #ffcc00; color: black; font-weight: bold; cursor: pointer; width: 250px; }
         .btn:hover { background: #ffaa00; }
         .btn-red { background: #ff4444; color: white; }
+        .btn-small { width: auto; padding: 10px 15px; font-size: 14px; }
+        .shop-item { background: #333; padding: 10px 15px; margin: 5px; border-radius: 10px; width: 300px; display: flex; justify-content: space-between; align-items: center; }
         
-        #shopMenu { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 100; }
-        .shop-item { background: #333; padding: 15px; margin: 10px; border-radius: 10px; width: 300px; display: flex; justify-content: space-between; align-items: center; }
-        .shop-item button { width: auto; padding: 10px 20px; margin: 0; }
+        /* --- ЛОББИ --- */
+        #lobby { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 100; }
+        #roomCodeDisplay { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 10px; font-size: 30px; font-weight: bold; color: #ffcc00; display: none; }
+        #startMatchBtn { display: none; background: #00ff00; color: black; font-size: 24px; margin-top: 20px; }
         
-        /* --- ИГРОВОЙ ИНТЕРФЕЙС --- */
+        /* --- HUD --- */
         #hud { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); }
-        #stats { position: absolute; top: 20px; left: 20px; color: white; font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; }
-        #timer { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-size: 30px; font-weight: bold; text-shadow: 2px 2px 2px #000; }
+        #stats { position: absolute; top: 20px; left: 20px; color: white; font-size: 16px; font-weight: bold; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; }
+        #timer { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-size: 30px; font-weight: bold; }
         
         /* --- УПРАВЛЕНИЕ --- */
         #joystick { display: none; position: absolute; bottom: 50px; left: 50px; width: 120px; height: 120px; background: rgba(255,255,255,0.2); border-radius: 50%; touch-action: none; z-index: 50; }
         #btnShoot { display: none; position: absolute; bottom: 50px; right: 50px; width: 100px; height: 100px; background: rgba(255,0,0,0.6); border-radius: 50%; color: white; font-size: 20px; font-weight: bold; text-align: center; line-height: 100px; touch-action: none; z-index: 50; }
-        #btnReload { display: none; position: absolute; bottom: 160px; right: 50px; width: 70px; height: 70px; background: rgba(0,0,255,0.6); border-radius: 50%; color: white; font-size: 14px; font-weight: bold; text-align: center; line-height: 70px; touch-action: none; z-index: 50; }
     </style>
 </head>
 <body>
 
+    <!-- Экран Авторизации -->
+    <div id="authScreen">
+        <h1 style="color:#ffcc00;">ВХОД В ИГРУ</h1>
+        <input type="text" id="authUser" class="input-box" placeholder="Твой Никнейм">
+        <input type="password" id="authPass" class="input-box" placeholder="Пароль">
+        <button class="btn" onclick="login()">ВОЙТИ / СОЗДАТЬ АККАУНТ</button>
+    </div>
+
     <!-- Главное меню -->
     <div id="menu">
         <h1>WEB 3D SHOOTER</h1>
+        <p>Игрок: <span id="menuUser" style="color:#00ff00; font-weight:bold;"></span></p>
         <p>Монеты: <span id="menuCoins">0</span> 🪙</p>
+        
         <button class="btn" onclick="openShop()">МАГАЗИН</button>
-        <button class="btn btn-red" onclick="startHost()">СОЗДАТЬ КОМНАТУ (ХОСТ)</button>
+        <button class="btn btn-red" onclick="startHost()">СОЗДАТЬ КОМНАТУ</button>
         <div style="display:flex; gap: 10px; margin-top: 10px;">
-            <input type="text" id="joinCode" placeholder="Код комнаты" style="padding:10px; font-size:16px; border-radius:5px; border:none; width: 150px;">
-            <button class="btn" style="width: auto; margin: 0;" onclick="startClient()">ВОЙТИ</button>
+            <input type="text" id="joinCode" placeholder="Код (X2X2X2)" style="padding:10px; font-size:16px; border-radius:5px; border:none; width: 140px; text-transform: uppercase;">
+            <button class="btn btn-small" onclick="startClient()">ВОЙТИ</button>
+        </div>
+
+        <div style="margin-top: 20px; display:flex; gap: 5px;">
+            <input type="text" id="promoInput" placeholder="Промокод" style="padding:10px; font-size:14px; border-radius:5px; border:none; width: 150px;">
+            <button class="btn btn-small" style="background:#00ccff;" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
         </div>
     </div>
 
@@ -54,67 +75,137 @@
         <p>Монеты: <span id="shopCoins">0</span> 🪙</p>
         <div class="shop-item">
             <span>Винтовка (Урон 35)</span>
-            <button class="btn" onclick="buyWeapon('rifle', 100)">Купить (100)</button>
+            <button class="btn btn-small" onclick="buyWeapon('rifle', 100)">Купить (100)</button>
         </div>
         <div class="shop-item">
             <span>Снайперка (Урон 100)</span>
-            <button class="btn" onclick="buyWeapon('sniper', 300)">Купить (300)</button>
+            <button class="btn btn-small" onclick="buyWeapon('sniper', 300)">Купить (300)</button>
         </div>
-        <div class="shop-item">
-            <span>Скин: Синий</span>
-            <button class="btn" onclick="buySkin('blue', 50)">Купить (50)</button>
-        </div>
-        <button class="btn btn-red" onclick="closeShop()">НАЗАД</button>
+        <button class="btn btn-red" style="margin-top:20px;" onclick="closeShop()">НАЗАД</button>
     </div>
+
+    <!-- Лобби -->
+    <div id="lobby">
+        <h2>ЛОББИ</h2>
+        <p id="lobbyStatus" style="color:#aaa;">Ожидание игроков...</p>
+        <button id="startMatchBtn" class="btn" onclick="startMatch()">НАЧАТЬ МАТЧ</button>
+    </div>
+    <div id="roomCodeDisplay">КОД: <span id="codeText"></span></div>
 
     <!-- HUD -->
     <div id="hud">
         <div id="crosshair"></div>
-        <div id="stats">HP: 100 | Оружие: <span id="hudWeapon">Пистолет</span> | Убийств: <span id="hudKills">0</span> | <span id="hudStatus"></span></div>
+        <div id="stats">HP: 100 | Оружие: <span id="hudWeapon">Пистолет</span> | Убийств: <span id="hudKills">0</span></div>
         <div id="timer">3:00</div>
     </div>
 
-    <!-- Управление для телефона -->
     <div id="joystick"></div>
     <div id="btnShoot">ОГОНЬ</div>
-    <div id="btnReload">RELOAD</div>
 
     <script>
         // ==========================================
-        // 1. ЭКОНОМИКА И ДАННЫЕ (LocalStorage)
+        // 1. СИСТЕМА АККАУНТОВ И СОХРАНЕНИЯ
         // ==========================================
-        let save = JSON.parse(localStorage.getItem("fps_save")) || { coins: 0, weapons: ["pistol"], skins: ["green"], activeWeapon: "pistol", activeSkin: "green" };
+        let currentUser = null;
+        let save = { coins: 0, weapons: ["pistol"], activeWeapon: "pistol", usedPromos: [] };
         const WEAPONS = {
-            pistol: { name: "Пистолет", dmg: 20, rate: 300, color: 0xaaaaaa },
-            rifle: { name: "Винтовка", dmg: 35, rate: 150, color: 0x333333 },
-            sniper: { name: "Снайперка", dmg: 100, rate: 1500, color: 0x111111 }
+            pistol: { name: "Пистолет", dmg: 20, rate: 300 },
+            rifle: { name: "Винтовка", dmg: 35, rate: 150 },
+            sniper: { name: "Снайперка", dmg: 100, rate: 1500 }
         };
-        const SKINS = { green: 0x00ff00, blue: 0x0000ff, red: 0xff0000, gold: 0xffcc00 };
+
+        function login() {
+            let u = document.getElementById('authUser').value.trim();
+            let p = document.getElementById('authPass').value;
+            if(!u || !p) return alert("Заполни ник и пароль!");
+            
+            // Проверяем, есть ли такой юзер в памяти
+            let savedPass = localStorage.getItem('fps_pass_' + u);
+            if (savedPass) {
+                if (savedPass !== p) return alert("Неверный пароль!");
+            } else {
+                // Если нет, регистрируем (сохраняем пароль)
+                localStorage.setItem('fps_pass_' + u, p);
+            }
+
+            currentUser = u;
+            localStorage.setItem('fps_active_user', u); // Запоминаем, кто зашел
+            loadSave();
+            showMenu();
+        }
+
+        function loadSave() {
+            let s = localStorage.getItem('fps_save_' + currentUser);
+            if (s) {
+                save = JSON.parse(s);
+                if(!save.usedPromos) save.usedPromos = [];
+            } else {
+                save = { coins: 0, weapons: ["pistol"], activeWeapon: "pistol", usedPromos: [] };
+                saveData();
+            }
+            updateCoins();
+        }
+
+        function saveData() {
+            if(currentUser) localStorage.setItem('fps_save_' + currentUser, JSON.stringify(save));
+        }
+
+        function showMenu() {
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('menu').style.display = 'flex';
+            document.getElementById('menuUser').innerText = currentUser;
+        }
 
         function updateCoins() {
             document.getElementById('menuCoins').innerText = save.coins;
             document.getElementById('shopCoins').innerText = save.coins;
         }
-        updateCoins();
 
+        // Авто-вход, если уже играл
+        window.onload = () => {
+            let active = localStorage.getItem('fps_active_user');
+            if(active) {
+                currentUser = active;
+                loadSave();
+                showMenu();
+            }
+        };
+
+        // ==========================================
+        // 2. ПРОМОКОДЫ
+        // ==========================================
+        function applyPromo() {
+            let code = document.getElementById('promoInput').value.trim();
+            if (code === "Петушара2026") {
+                if (save.usedPromos.includes(code)) {
+                    alert("Ты уже активировал этот промокод!");
+                    return;
+                }
+                save.coins += 1000;
+                save.usedPromos.push(code);
+                saveData();
+                updateCoins();
+                alert("Промокод принят! +1000 монет! 🪙");
+            } else {
+                alert("Неверный промокод.");
+            }
+        }
+
+        // ==========================================
+        // 3. МАГАЗИН
+        // ==========================================
         function openShop() { document.getElementById('menu').style.display = 'none'; document.getElementById('shopMenu').style.display = 'flex'; }
         function closeShop() { document.getElementById('shopMenu').style.display = 'none'; document.getElementById('menu').style.display = 'flex'; }
         
         function buyWeapon(w, price) {
             if (save.coins >= price && !save.weapons.includes(w)) {
                 save.coins -= price; save.weapons.push(w); save.activeWeapon = w;
-                localStorage.setItem("fps_save", JSON.stringify(save)); updateCoins(); alert("Куплено!");
-            } else { alert("Не хватает монет или уже куплено!"); }
-        }
-        function buySkin(s, price) {
-            if (save.coins >= price && !save.skins.includes(s)) {
-                save.coins -= price; save.skins.push(s); save.activeSkin = s;
-                localStorage.setItem("fps_save", JSON.stringify(save)); updateCoins(); alert("Куплено!");
+                saveData(); updateCoins(); alert("Куплено! Оружие экипировано.");
             } else { alert("Не хватает монет или уже куплено!"); }
         }
 
         // ==========================================
-        // 2. НАСТРОЙКА 3D (Three.js)
+        // 4. НАСТРОЙКА 3D (Three.js)
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
@@ -133,136 +224,143 @@
         scene.add(light);
         scene.add(new THREE.AmbientLight(0x606060));
 
-        // Мир (Карта)
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshLambertMaterial({ color: 0x555555 }));
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
 
-        const walls = [];
         const wallMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 15; i++) {
             const box = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 4), wallMat);
             box.position.set((Math.random() - 0.5) * 60, 2.5, (Math.random() - 0.5) * 60);
-            // Не спавним стены прямо на спавне игрока
-            if(Math.hypot(box.position.x, box.position.z) > 10) {
-                scene.add(box);
-                walls.push(box);
-            }
+            if(Math.hypot(box.position.x, box.position.z) > 10) scene.add(box);
         }
 
-        // Функция создания 3D-человечка (Стикмен)
         function createStickman(color, isBot) {
             const group = new THREE.Group();
-            // Голова
             const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshLambertMaterial({ color: isBot ? 0xff0000 : color }));
-            head.position.y = 1.7;
-            group.add(head);
-            // Тело
+            head.position.y = 1.7; group.add(head);
             const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({ color: isBot ? 0x880000 : color }));
-            body.position.y = 1.1;
-            group.add(body);
-            // Руки (просто палки)
+            body.position.y = 1.1; group.add(body);
             const arm1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.1), new THREE.MeshLambertMaterial({ color: color }));
             arm1.position.set(-0.25, 1.2, 0); group.add(arm1);
             const arm2 = arm1.clone(); arm2.position.x = 0.25; group.add(arm2);
-            // Ноги
             const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 0.15), new THREE.MeshLambertMaterial({ color: 0x222222 }));
             leg1.position.set(-0.1, 0.35, 0); group.add(leg1);
             const leg2 = leg1.clone(); leg2.position.x = 0.1; group.add(leg2);
-            
             return group;
         }
 
         // ==========================================
-        // 3. СЕТЕВАЯ ЛОГИКА И ИГРА
+        // 5. СЕТЕВАЯ ЛОГИКА ИГРЫ
         // ==========================================
         let peer = null;
         let connections = [];
         let isHost = false;
         let myId = "";
+        let myRoomCode = "";
         
-        let players = {}; // Объекты моделей игроков
-        let bots = [];    // Объекты ботов (только у хоста)
-        let bullets = []; // Пули
-        let myKills = 0;
+        let players = {}; 
+        let bots = [];    
+        let bullets = []; 
         let myHp = 100;
         let gameActive = false;
-        let timeLeft = 180; // 3 минуты
+        let timeLeft = 180;
         let lastShootTime = 0;
 
-        const hpHud = document.getElementById('hud');
-        const hudKills = document.getElementById('hudKills');
-        const hudStatus = document.getElementById('hudStatus');
-        const hudWeapon = document.getElementById('hudWeapon');
-        const timerEl = document.getElementById('timer');
+        function generateCode() {
+            const l = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const n = "0123456789";
+            return l[Math.floor(Math.random()*26)] + n[Math.floor(Math.random()*10)] + 
+                   l[Math.floor(Math.random()*26)] + n[Math.floor(Math.random()*10)] + 
+                   l[Math.floor(Math.random()*26)] + n[Math.floor(Math.random()*10)];
+        }
 
-        function startGameUI() {
+        function showLobby(isHostFlag) {
             document.getElementById('menu').style.display = 'none';
-            hpHud.style.display = 'block';
-            if('ontouchstart' in window) {
-                document.getElementById('joystick').style.display = 'block';
-                document.getElementById('btnShoot').style.display = 'block';
-                document.getElementById('btnReload').style.display = 'block';
+            document.getElementById('shopMenu').style.display = 'none';
+            document.getElementById('lobby').style.display = 'flex';
+            document.getElementById('roomCodeDisplay').style.display = 'block';
+            document.getElementById('codeText').innerText = myRoomCode;
+            
+            if (isHostFlag) {
+                document.getElementById('startMatchBtn').style.display = 'block';
+                document.getElementById('lobbyStatus').innerText = "Ты Хост. Жди друзей.";
+            } else {
+                document.getElementById('startMatchBtn').style.display = 'none';
+                document.getElementById('lobbyStatus').innerText = "Ожидание хоста...";
             }
-            hudWeapon.innerText = WEAPONS[save.activeWeapon].name;
-            gameActive = true;
         }
 
         function startHost() {
-            peer = new Peer();
+            myRoomCode = generateCode();
+            peer = new Peer(myRoomCode);
+            
             peer.on('open', (id) => {
                 myId = id; isHost = true;
-                initMyPlayer();
-                startGameUI();
-                alert("Код комнаты: " + id);
+                showLobby(true);
             });
-            peer.on('error', (err) => alert("Ошибка сети: " + err.type));
+            
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') { startHost(); } 
+                else alert("Ошибка сети: " + err.type);
+            });
             
             peer.on('connection', (conn) => {
                 connections.push(conn);
-                conn.on('open', () => {
-                    conn.send({ type: 'welcome', color: SKINS[save.activeSkin] });
-                    spawnBot(); // Спавним бота, когда заходит игрок
-                });
+                conn.on('open', () => { conn.send({ type: 'lobbyInfo' }); });
                 conn.on('data', (data) => {
                     if (data.type === 'input') {
                         updateRemotePlayer(data.id, data);
-                        if (data.shoot) hostSpawnBullet(data.id, data.x, data.y, data.z, data.rotY);
+                        if (data.shoot) hostSpawnBullet(data.id, data.x, data.z, data.rotY, data.dmg);
                     }
                 });
-                conn.on('close', () => { delete players[conn.peer]; connections = connections.filter(c => c !== conn); });
             });
         }
 
         function startClient() {
-            const hostId = document.getElementById('joinCode').value.trim();
-            if (!hostId) return alert("Введи код!");
+            const hostId = document.getElementById('joinCode').value.trim().toUpperCase();
+            if (!hostId || hostId.length !== 6) return alert("Введи корректный код!");
+            
+            myRoomCode = hostId;
             peer = new Peer();
             peer.on('open', (id) => {
                 myId = id; isHost = false;
                 const conn = peer.connect(hostId, { reliable: true });
                 connections.push(conn);
-                conn.on('open', () => {
-                    initMyPlayer();
-                    startGameUI();
-                });
+                conn.on('open', () => { showLobby(false); });
                 conn.on('data', (data) => {
-                    if (data.type === 'state') {
-                        syncStateFromHost(data);
-                    }
+                    if (data.type === 'startGame') startGameUI();
+                    if (data.type === 'state') syncStateFromHost(data);
                 });
             });
+            peer.on('error', (err) => alert("Ошибка: " + err.type + ". Проверь код или включи VPN."));
         }
 
-        function initMyPlayer() {
-            const col = SKINS[save.activeSkin];
-            const model = createStickman(col, false);
+        function startMatch() {
+            if (!isHost) return;
+            document.getElementById('lobby').style.display = 'none';
+            startGameUI();
+            connections.forEach(c => { if(c.open) c.send({ type: 'startGame' }); });
+        }
+
+        function startGameUI() {
+            document.getElementById('lobby').style.display = 'none';
+            document.getElementById('hud').style.display = 'block';
+            if('ontouchstart' in window) {
+                document.getElementById('joystick').style.display = 'block';
+                document.getElementById('btnShoot').style.display = 'block';
+            }
+            document.getElementById('hudWeapon').innerText = WEAPONS[save.activeWeapon].name;
+            
+            const model = createStickman(0x00ff00, false);
             scene.add(model);
-            players[myId] = { model: model, x: 0, y: 0, z: 0, rotY: 0, hp: 100, kills: 0, color: col };
-            spawnBot(); // Хост спавнит ботов
+            players[myId] = { model: model, x: 0, y: 0, z: 0, rotY: 0, hp: 100, kills: 0, color: 0x00ff00 };
+
+            gameActive = true;
+            if (isHost) for(let i=0; i<3; i++) spawnBot();
         }
 
-        // --- БОТЫ (Только Хост) ---
+        // --- БОТЫ ---
         function spawnBot() {
             if (!isHost) return;
             const model = createStickman(0xff0000, true);
@@ -274,7 +372,6 @@
         function updateBots(delta) {
             if (!isHost) return;
             bots.forEach(bot => {
-                // Ищем ближайшего игрока
                 let closestPlayer = null;
                 let minDist = Infinity;
                 for(let id in players) {
@@ -284,41 +381,27 @@
                 }
                 
                 if (closestPlayer) {
-                    // Поворот к игроку
                     let angle = Math.atan2(closestPlayer.x - bot.model.position.x, closestPlayer.z - bot.model.position.z);
                     bot.model.rotation.y = angle;
-                    
-                    // Движение
                     if (minDist > 5) {
                         bot.model.position.x += Math.sin(angle) * bot.speed * delta;
                         bot.model.position.z += Math.cos(angle) * bot.speed * delta;
                     }
-
-                    // Стрельба
                     if (minDist < 30 && performance.now() - bot.lastShoot > 1000) {
                         bot.lastShoot = performance.now();
-                        hostSpawnBullet("bot", bot.model.position.x, 1.5, bot.model.position.z, angle);
+                        hostSpawnBullet("bot", bot.model.position.x, bot.model.position.z, angle, 15);
                     }
                 }
             });
         }
 
         // --- ПУЛИ ---
-        function hostSpawnBullet(owner, x, y, z, rotY) {
+        function hostSpawnBullet(owner, x, z, rotY, dmg) {
             if (!isHost) return;
-            const isPistol = WEAPONS[save.activeWeapon];
-            const speed = 40;
-            const vx = Math.sin(rotY) * speed;
-            const vz = Math.cos(rotY) * speed;
-            
-            // Визуальная пуля
-            const bGeo = new THREE.SphereGeometry(0.2);
-            const bMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-            const bMesh = new THREE.Mesh(bGeo, bMat);
-            bMesh.position.set(x, y, z);
+            const bMesh = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+            bMesh.position.set(x, 1.5, z);
             scene.add(bMesh);
-
-            bullets.push({ mesh: bMesh, vx: vx, vz: vz, owner: owner, dmg: 25, life: 2.0 });
+            bullets.push({ mesh: bMesh, vx: Math.sin(rotY) * 40, vz: Math.cos(rotY) * 40, owner: owner, dmg: dmg, life: 2.0 });
         }
 
         function updateBullets(delta) {
@@ -328,135 +411,91 @@
                 b.mesh.position.x += b.vx * delta;
                 b.mesh.position.z += b.vz * delta;
                 b.life -= delta;
-
                 let hit = false;
 
-                // Проверка попадания в игроков
                 for (let id in players) {
                     if (id !== b.owner) {
                         let p = players[id];
-                        let dist = Math.hypot(b.mesh.position.x - p.x, b.mesh.position.z - p.z);
-                        if (dist < 1.5) {
+                        if (Math.hypot(b.mesh.position.x - p.x, b.mesh.position.z - p.z) < 1.5) {
                             hit = true;
-                            // Хост отправляет урон
-                            if(id === myId) { takeDamage(b.dmg); } 
-                            else { connections.forEach(c => { if(c.peer === id) c.send({type: 'hit', dmg: b.dmg}); }); }
-                            
-                            // Убийство
-                            if (isHost && id === myId && players[myId].hp <= 0) { players[b.owner].kills++; resetPlayer(myId); }
+                            if(id === myId) takeDamage(b.dmg); 
+                            else connections.forEach(c => { if(c.peer === id) c.send({type: 'hit', dmg: b.dmg}); });
                         }
                     }
                 }
 
-                // Проверка попадания в ботов
                 if (b.owner !== "bot") {
                     bots.forEach((bot, index) => {
-                        let dist = Math.hypot(b.mesh.position.x - bot.model.position.x, b.mesh.position.z - bot.model.position.z);
-                        if (dist < 1.5) {
-                            hit = true;
-                            bot.hp -= b.dmg;
+                        if (Math.hypot(b.mesh.position.x - bot.model.position.x, b.mesh.position.z - bot.model.position.z) < 1.5) {
+                            hit = true; bot.hp -= b.dmg;
                             if (bot.hp <= 0) {
-                                scene.remove(bot.model);
-                                bots.splice(index, 1);
-                                players[b.owner].kills++;
-                                spawnBot(); // Респавн бота
+                                scene.remove(bot.model); bots.splice(index, 1);
+                                if(players[b.owner]) players[b.owner].kills++;
+                                spawnBot();
                             }
                         }
                     });
                 }
 
-                if (hit || b.life <= 0 || Math.abs(b.mesh.position.x) > 60 || Math.abs(b.mesh.position.z) > 60) {
-                    scene.remove(b.mesh);
-                    bullets.splice(i, 1);
-                }
+                if (hit || b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
             }
         }
 
-        // --- СИНХРОНИЗАЦИЯ (Хост -> Клиент) ---
         function updateRemotePlayer(id, data) {
             if (!players[id]) {
-                const model = createStickman(data.color, false);
+                const model = createStickman(0x00ff00, false);
                 scene.add(model);
-                players[id] = { model: model, x: 0, y: 0, z: 0, rotY: 0, hp: 100, kills: 0, color: data.color };
+                players[id] = { model: model, x: 0, y: 0, z: 0, rotY: 0, hp: 100, kills: 0, color: 0x00ff00 };
             }
-            players[id].x = data.x;
-            players[id].y = data.y;
-            players[id].z = data.z;
-            players[id].rotY = data.rotY;
-            players[id].model.position.set(data.x, data.y, data.z);
+            players[id].x = data.x; players[id].z = data.z; players[id].rotY = data.rotY;
+            players[id].model.position.set(data.x, 0, data.z);
             players[id].model.rotation.y = data.rotY;
         }
 
         function syncStateFromHost(data) {
-            // Обновляем игроков
             for(let id in data.players) {
                 if(id !== myId) {
                     if(!players[id]) {
-                        const model = createStickman(data.players[id].color, false);
+                        const model = createStickman(0x00ff00, false);
                         scene.add(model);
-                        players[id] = { model: model, x:0,y:0,z:0,rotY:0,hp:100,kills:0,color:data.players[id].color };
+                        players[id] = { model: model, x:0,z:0,rotY:0,hp:100,kills:0,color:0x00ff00 };
                     }
-                    players[id].x = data.players[id].x;
-                    players[id].z = data.players[id].z;
+                    players[id].x = data.players[id].x; players[id].z = data.players[id].z;
                     players[id].model.position.set(players[id].x, 0, players[id].z);
                     players[id].model.rotation.y = data.players[id].rotY;
                 }
             }
-
-            // Обновляем ботов
-            // (Удаляем старых, чтобы не было дублей)
-            bots.forEach(b => scene.remove(b.model));
-            bots = [];
+            bots.forEach(b => scene.remove(b.model)); bots = [];
             data.bots.forEach(b => {
                 const model = createStickman(0xff0000, true);
-                model.position.set(b.x, 0, b.z);
-                model.rotation.y = b.rotY;
-                scene.add(model);
-                bots.push({ model: model });
+                model.position.set(b.x, 0, b.z); model.rotation.y = b.rotY;
+                scene.add(model); bots.push({ model: model });
             });
-
-            // Пули
-            bullets.forEach(b => scene.remove(b.mesh));
-            bullets = [];
+            bullets.forEach(b => scene.remove(b.mesh)); bullets = [];
             data.bullets.forEach(b => {
-                const bGeo = new THREE.SphereGeometry(0.2);
-                const bMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-                const bMesh = new THREE.Mesh(bGeo, bMat);
-                bMesh.position.set(b.x, b.y, b.z);
-                scene.add(bMesh);
+                const bMesh = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+                bMesh.position.set(b.x, 1.5, b.z); scene.add(bMesh);
                 bullets.push({ mesh: bMesh, owner: b.owner });
             });
-
             timeLeft = data.timeLeft;
-            timerEl.innerText = Math.floor(timeLeft/60) + ":" + (timeLeft%60).toString().padStart(2,'0');
+            document.getElementById('timer').innerText = Math.floor(timeLeft/60) + ":" + Math.floor(timeLeft%60).toString().padStart(2,'0');
         }
 
         function hostSendState() {
             if(!isHost) return;
-            const state = {
-                type: 'state',
-                players: {},
-                bots: bots.map(b => ({ x: b.model.position.x, z: b.model.position.z, rotY: b.model.rotation.y })),
-                bullets: bullets.map(b => ({ x: b.mesh.position.x, y: b.mesh.position.y, z: b.mesh.position.z, owner: b.owner })),
-                timeLeft: timeLeft
-            };
-            for (let id in players) {
-                state.players[id] = { x: players[id].x, z: players[id].z, rotY: players[id].rotY, kills: players[id].kills, color: players[id].color };
-            }
+            const state = { type: 'state', players: {}, bots: bots.map(b => ({ x: b.model.position.x, z: b.model.position.z, rotY: b.model.rotation.y })), bullets: bullets.map(b => ({ x: b.mesh.position.x, z: b.mesh.position.z, owner: b.owner })), timeLeft: timeLeft };
+            for (let id in players) state.players[id] = { x: players[id].x, z: players[id].z, rotY: players[id].rotY, kills: players[id].kills, color: 0x00ff00 };
             connections.forEach(c => { if(c.open) c.send(state); });
         }
 
         // ==========================================
-        // 4. УПРАВЛЕНИЕ
+        // 6. УПРАВЛЕНИЕ
         // ==========================================
-        let moveX = 0, moveY = 0;
-        let yaw = 0, pitch = 0;
+        let moveX = 0, moveY = 0, yaw = 0, pitch = 0;
         let keys = {};
-        
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // Джойстик
         const joy = document.getElementById('joystick');
         let joyTouchId = null;
         joy.addEventListener('touchstart', e => { e.preventDefault(); joyTouchId = e.changedTouches[0].identifier; }, {passive: false});
@@ -465,24 +504,18 @@
             for(let t of e.changedTouches) {
                 if(t.identifier === joyTouchId) {
                     let rect = joy.getBoundingClientRect();
-                    let dx = t.clientX - (rect.left + rect.width/2);
-                    let dy = t.clientY - (rect.top + rect.height/2);
-                    moveX = Math.max(-1, Math.min(1, dx / 60)); 
-                    moveY = Math.max(-1, Math.min(1, dy / 60));
+                    moveX = Math.max(-1, Math.min(1, (t.clientX - (rect.left + rect.width/2)) / 60)); 
+                    moveY = Math.max(-1, Math.min(1, (t.clientY - (rect.top + rect.height/2)) / 60));
                 }
             }
         }, {passive: false});
         joy.addEventListener('touchend', () => { joyTouchId = null; moveX = 0; moveY = 0; });
 
-        // Поворот камеры
-        let lookTouchId = null;
-        let lastTouchX = 0, lastTouchY = 0;
+        let lookTouchId = null, lastTouchX = 0, lastTouchY = 0;
         window.addEventListener('touchstart', e => {
             for(let t of e.changedTouches) {
                 if(t.target === renderer.domElement && t.clientX > window.innerWidth / 3) {
-                    lookTouchId = t.identifier;
-                    lastTouchX = t.clientX;
-                    lastTouchY = t.clientY;
+                    lookTouchId = t.identifier; lastTouchX = t.clientX; lastTouchY = t.clientY;
                 }
             }
         }, {passive: false});
@@ -490,58 +523,42 @@
             for(let t of e.changedTouches) {
                 if(t.identifier === lookTouchId) {
                     e.preventDefault();
-                    yaw -= (t.clientX - lastTouchX) * 0.005;
-                    pitch -= (t.clientY - lastTouchY) * 0.005;
+                    yaw -= (t.clientX - lastTouchX) * 0.005; pitch -= (t.clientY - lastTouchY) * 0.005;
                     pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, pitch));
                     lastTouchX = t.clientX; lastTouchY = t.clientY;
                 }
             }
         }, {passive: false});
-        window.addEventListener('touchend', e => {
-            for(let t of e.changedTouches) { if(t.identifier === lookTouchId) lookTouchId = null; }
-        });
+        window.addEventListener('touchend', e => { for(let t of e.changedTouches) { if(t.identifier === lookTouchId) lookTouchId = null; } });
 
-        // Стрельба
         function shoot() {
             if (!gameActive || !players[myId]) return;
             let now = performance.now();
-            if (now - lastShootTime > WEAPONS[save.activeWeapon].rate) {
+            let weapon = WEAPONS[save.activeWeapon];
+            if (now - lastShootTime > weapon.rate) {
                 lastShootTime = now;
-                if (isHost) hostSpawnBullet(myId, camera.position.x, camera.position.y, camera.position.z, yaw);
-                else connections[0].send({ type: 'input', id: myId, x: players[myId].x, y: players[myId].y, z: players[myId].z, rotY: yaw, shoot: true, color: SKINS[save.activeSkin] });
+                if (isHost) hostSpawnBullet(myId, camera.position.x, camera.position.z, yaw, weapon.dmg);
+                else connections[0].send({ type: 'input', id: myId, x: players[myId].x, z: players[myId].z, rotY: yaw, shoot: true, dmg: weapon.dmg });
             }
         }
 
         document.getElementById('btnShoot').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); shoot(); }, {passive: false});
         window.addEventListener('mousedown', (e) => { if(e.button === 0 && !('ontouchstart' in window)) shoot(); });
-
         document.addEventListener('mousemove', (e) => {
             if (document.pointerLockElement === renderer.domElement) {
-                yaw -= e.movementX * 0.002;
-                pitch -= e.movementY * 0.002;
+                yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002;
                 pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, pitch));
             }
         });
-        renderer.domElement.addEventListener('click', () => {
-            if(!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
-        });
+        renderer.domElement.addEventListener('click', () => { if(!('ontouchstart' in window)) renderer.domElement.requestPointerLock(); });
 
         function takeDamage(dmg) {
             myHp -= dmg;
-            if (myHp <= 0) {
-                alert("Ты убит!");
-                myHp = 100;
-                camera.position.set(0, 1.6, 0);
-            }
-        }
-
-        function resetPlayer(id) {
-            if(id === myId) { myHp = 100; camera.position.set(0,1.6,0); }
-            players[id].hp = 100;
+            if (myHp <= 0) { alert("Ты убит!"); myHp = 100; camera.position.set(0, 1.6, 0); }
         }
 
         // ==========================================
-        // 5. ГЛАВНЫЙ ЦИКЛ
+        // 7. ГЛАВНЫЙ ЦИКЛ
         // ==========================================
         let lastTime = performance.now();
         let syncTimer = 0;
@@ -552,10 +569,8 @@
             lastTime = performance.now();
 
             if (gameActive && players[myId]) {
-                // Камера
                 camera.rotation.set(pitch, yaw, 0);
                 
-                // Движение
                 let speed = 8 * delta;
                 let forward = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
                 let right = new THREE.Vector3(1, 0, 0).applyEuler(camera.rotation);
@@ -570,44 +585,34 @@
                 camera.position.addScaledVector(forward, fwdInput * speed);
                 camera.position.addScaledVector(right, rightInput * speed);
                 camera.position.y = 1.6;
-
-                // Ограничение по карте
                 camera.position.x = Math.max(-45, Math.min(45, camera.position.x));
                 camera.position.z = Math.max(-45, Math.min(45, camera.position.z));
 
-                // Обновляем данные своего игрока
                 players[myId].x = camera.position.x;
                 players[myId].z = camera.position.z;
                 players[myId].rotY = yaw;
                 players[myId].model.position.set(camera.position.x, 0, camera.position.z);
                 players[myId].model.rotation.y = yaw;
 
-                // Клиент отправляет инпут
                 if (!isHost && connections[0] && connections[0].open) {
-                    connections[0].send({ type: 'input', id: myId, x: camera.position.x, y: 0, z: camera.position.z, rotY: yaw, shoot: false, color: SKINS[save.activeSkin] });
+                    connections[0].send({ type: 'input', id: myId, x: camera.position.x, z: camera.position.z, rotY: yaw, shoot: false });
                 }
 
-                // Логика Хоста
                 if (isHost) {
                     updateBots(delta);
                     updateBullets(delta);
-                    
                     timeLeft -= delta;
                     if (timeLeft <= 0) {
                         gameActive = false;
-                        alert("МАТЧ ОКОНЧЕН! Игра перезагрузится.");
-                        // Начисляем монеты за игру
-                        save.coins += 50; localStorage.setItem("fps_save", JSON.stringify(save));
+                        save.coins += 50; saveData();
+                        alert("МАТЧ ОКОНЧЕН! Ты получил 50 монет.");
                         location.reload();
                     }
-
-                    // Синхронизация 15 раз в секунду
                     syncTimer += delta;
                     if (syncTimer > 0.06) { hostSendState(); syncTimer = 0; }
                 }
 
-                // Обновляем HUD
-                hudKills.innerText = players[myId].kills || 0;
+                document.getElementById('hudKills').innerText = players[myId].kills || 0;
                 document.getElementById('stats').innerHTML = `HP: ${myHp} | Оружие: ${WEAPONS[save.activeWeapon].name} | Убийств: ${players[myId].kills || 0}`;
             }
 
