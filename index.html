@@ -3,264 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Битва за Звезду (Host-Client)</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <title>Web 3D Shooter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; background: #222; overflow: hidden; font-family: sans-serif; }
-        canvas { display: block; touch-action: none; background: #111; }
-        #ui { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 10px; pointer-events: none; }
-        #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #333; padding: 20px; border-radius: 10px; text-align: center; color: white; z-index: 10; }
-        input, button { padding: 10px; margin: 5px; font-size: 16px; border-radius: 5px; border: none; width: 100%; box-sizing: border-box; }
-        button { background: #ffcc00; color: black; font-weight: bold; cursor: pointer; }
-        button:hover { background: #ffaa00; }
-        .scoreboard { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 10px; color: white; text-align: right; }
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas { display: block; }
+        #crosshair {
+            position: absolute; top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            border: 2px solid white; border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        #ui { position: absolute; bottom: 20px; left: 20px; color: white; font-family: sans-serif; font-size: 20px; }
+        #joystick {
+            position: absolute; bottom: 50px; left: 50px;
+            width: 100px; height: 100px;
+            background: rgba(255,255,255,0.2); border-radius: 50%;
+        }
+        #btnShoot {
+            position: absolute; bottom: 50px; right: 50px;
+            width: 80px; height: 80px;
+            background: rgba(255,0,0,0.5); border-radius: 50%;
+            color: white; font-weight: bold; text-align: center; line-height: 80px;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
-
-    <div id="menu">
-        <h2>Битва за Звезду</h2>
-        <button id="createBtn">Создать Комнату</button>
-        <hr style="border-color: #555;">
-        <input type="text" id="joinCode" placeholder="Введи код комнаты">
-        <button id="joinBtn">Подключиться</button>
-    </div>
-
-    <div id="ui" style="display:none;">
-        Роль: <span id="role" style="font-weight:bold; color:yellow;">...</span><br>
-        Игроков: <span id="playerCount">1</span><br>
-    </div>
-
-    <div id="scoreboard" class="scoreboard" style="display:none;">
-        <h3>Счёт</h3>
-        <div id="scores"></div>
-    </div>
+    <div id="crosshair"></div>
+    <div id="ui">Попаданий: <span id="score">0</span></div>
     
-    <canvas id="canvas"></canvas>
+    <!-- Для мобилок -->
+    <div id="joystick"></div>
+    <div id="btnShoot">ОГОНЬ</div>
 
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        // 1. Настройка сцены
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Небо
+        scene.fog = new THREE.Fog(0x87CEEB, 10, 50); // Туман
 
-        let peer = null;
-        let connections = [];
-        let isHost = false;
-        let myId = "";
-        
-        let players = {}; 
-        let star = { x: canvas.width/2, y: canvas.height/2, radius: 30 };
-        let starOwner = null;
+        // 2. Камера (От первого лица)
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.y = 1.6; // Рост игрока
 
-        document.getElementById('createBtn').onclick = () => {
-            peer = new Peer();
-            peer.on('open', (id) => {
-                myId = id;
-                isHost = true;
-                players["me"] = { x: canvas.width/2, y: canvas.height/2 + 100, color: "#00ff00", score: 0, targetX: canvas.width/2, targetY: canvas.height/2 + 100 };
-                document.getElementById('menu').style.display = 'none';
-                document.getElementById('ui').style.display = 'block';
-                document.getElementById('scoreboard').style.display = 'block';
-                document.getElementById('role').innerText = 'Хост';
-                alert("Твой код комнаты: " + id);
-            });
-            
-            peer.on('connection', (conn) => {
-                connections.push(conn);
-                conn.on('open', () => {
-                    conn.send({ type: 'welcome', id: conn.peer, color: getRandomColor() });
-                });
-                conn.on('data', (data) => {
-                    if (data.type === 'move' && players[data.id]) {
-                        players[data.id].targetX = data.x;
-                        players[data.id].targetY = data.y;
-                    }
-                });
-                conn.on('close', () => {
-                    delete players[conn.peer];
-                    connections = connections.filter(c => c !== conn);
-                });
-            });
-        };
+        // 3. Рендерер
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-        document.getElementById('joinBtn').onclick = () => {
-            const hostId = document.getElementById('joinCode').value.trim();
-            if (!hostId) return alert("Введи код!");
-            
-            peer = new Peer();
-            peer.on('open', (id) => {
-                myId = id;
-                isHost = false;
-                const conn = peer.connect(hostId, { reliable: true });
-                connections.push(conn);
-                
-                conn.on('open', () => {
-                    document.getElementById('menu').style.display = 'none';
-                    document.getElementById('ui').style.display = 'block';
-                    document.getElementById('scoreboard').style.display = 'block';
-                    document.getElementById('role').innerText = 'Клиент';
-                });
+        // 4. Освещение
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(10, 20, 10);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040));
 
-                conn.on('data', (data) => {
-                    if (data.type === 'welcome') {
-                        players["me"] = { x: canvas.width/2, y: canvas.height/2 - 100, color: data.color, score: 0, targetX: canvas.width/2, targetY: canvas.height/2 - 100 };
-                        conn.send({ type: 'requestState' });
-                    }
-                    else if (data.type === 'gameState') {
-                        if (!players["me"]) return;
-                        let myX = players["me"].x, myY = players["me"].y, myColor = players["me"].color;
-                        players = data.players;
-                        players["me"] = { x: myX, y: myY, color: myColor, score: data.players["me"] ? data.players["me"].score : 0, targetX: myX, targetY: myY };
-                        starOwner = data.starOwner;
-                        updateScoreboard();
-                    }
-                });
-            });
-        };
+        // 5. Создание пола и стен
+        const floorGeo = new THREE.PlaneGeometry(100, 100);
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        scene.add(floor);
 
-        function sendMoveToHost() {
-            if (!isHost && connections[0] && connections[0].open && players["me"]) {
-                connections[0].send({ type: 'move', id: myId, x: players["me"].x, y: players["me"].y });
-            }
+        // Простые стены
+        const wallMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+        for (let i = 0; i < 10; i++) {
+            const boxGeo = new THREE.BoxGeometry(2, 4, 2);
+            const box = new THREE.Mesh(boxGeo, wallMat);
+            box.position.set((Math.random() - 0.5) * 40, 2, (Math.random() - 0.5) * 40);
+            scene.add(box);
         }
 
-        let touchStart = null;
-        canvas.addEventListener('touchstart', (e) => { touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY }; });
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            if (!touchStart || !players["me"]) return;
-            const touch = e.touches[0];
-            players["me"].x += (touch.clientX - touchStart.x) * 0.5;
-            players["me"].y += (touch.clientY - touchStart.y) * 0.5;
-            players["me"].x = Math.max(20, Math.min(canvas.width - 20, players["me"].x));
-            players["me"].y = Math.max(20, Math.min(canvas.height - 20, players["me"].y));
-            touchStart = { x: touch.clientX, y: touch.clientY };
-            sendMoveToHost();
-        }, {passive: false});
-        canvas.addEventListener('touchend', () => touchStart = null);
+        // 6. Мишени (Враги)
+        let targets = [];
+        let score = 0;
+        function spawnTarget() {
+            const targetGeo = new THREE.SphereGeometry(1, 16, 16);
+            const targetMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+            const target = new THREE.Mesh(targetGeo, targetMat);
+            target.position.set((Math.random() - 0.5) * 40, 1, (Math.random() - 0.5) * 40);
+            scene.add(target);
+            targets.push(target);
+        }
+        for(let i=0; i<5; i++) spawnTarget();
 
-        const keys = {};
+        // 7. Управление (Мобилки + ПК)
+        let moveX = 0, moveY = 0;
+        let keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        function updateHostLogic() {
-            if (!isHost) return;
-            let my = players["me"];
-            if (keys['ArrowLeft'] || keys['KeyA']) my.x -= 5;
-            if (keys['ArrowRight'] || keys['KeyD']) my.x += 5;
-            if (keys['ArrowUp'] || keys['KeyW']) my.y -= 5;
-            if (keys['ArrowDown'] || keys['KeyS']) my.y += 5;
-            my.x = Math.max(20, Math.min(canvas.width - 20, my.x));
-            my.y = Math.max(20, Math.min(canvas.height - 20, my.y));
-
-            for (let id in players) {
-                if (id === "me") continue;
-                let p = players[id];
-                if (p.targetX !== undefined) {
-                    p.x += (p.targetX - p.x) * 0.3;
-                    p.y += (p.targetY - p.y) * 0.3;
+        // Простая логика мобильного джойстика
+        const joy = document.getElementById('joystick');
+        let joyTouchId = null;
+        joy.addEventListener('touchstart', e => { joyTouchId = e.changedTouches[0].identifier; });
+        joy.addEventListener('touchmove', e => {
+            for(let t of e.changedTouches) {
+                if(t.identifier === joyTouchId) {
+                    let rect = joy.getBoundingClientRect();
+                    let dx = t.clientX - (rect.left + rect.width/2);
+                    let dy = t.clientY - (rect.top + rect.height/2);
+                    moveX = dx / 50; moveY = dy / 50;
                 }
             }
+        }, {passive: false});
+        joy.addEventListener('touchend', () => { joyTouchId = null; moveX = 0; moveY = 0; });
 
-            let onStar = null;
-            for (let id in players) {
-                if (Math.hypot(players[id].x - star.x, players[id].y - star.y) < star.radius + 20) { onStar = id; break; }
-            }
-            starOwner = onStar;
-            if (starOwner) players[starOwner].score += 1;
-
-            let ids = Object.keys(players);
-            for (let i = 0; i < ids.length; i++) {
-                for (let j = i + 1; j < ids.length; j++) {
-                    let p1 = players[ids[i]], p2 = players[ids[j]];
-                    let dx = p1.x - p2.x, dy = p1.y - p2.y, dist = Math.hypot(dx, dy);
-                    if (dist < 40) {
-                        let f = (40 - dist) * 0.1, angle = Math.atan2(dy, dx);
-                        p1.x += Math.cos(angle) * f; p1.y += Math.sin(angle) * f;
-                        p2.x -= Math.cos(angle) * f; p2.y -= Math.sin(angle) * f;
-                    }
+        // Поворот камеры свайпом по экрану
+        let lookTouchId = null;
+        let lastTouchX = 0, lastTouchY = 0;
+        renderer.domElement.addEventListener('touchstart', e => {
+            for(let t of e.changedTouches) {
+                if(t.clientX > window.innerWidth / 3) { // Свайп только в правой части экрана
+                    lookTouchId = t.identifier;
+                    lastTouchX = t.clientX;
+                    lastTouchY = t.clientY;
                 }
             }
-
-            connections.forEach(c => { if (c.open) c.send({ type: 'gameState', players: players, starOwner: starOwner }); });
-            updateScoreboard();
-        }
-
-        function updateScoreboard() {
-            let html = "";
-            let sorted = Object.entries(players).sort((a, b) => b[1].score - a[1].score);
-            for (let [id, p] of sorted) html += `<div style="color:${p.color}">${id === "me" ? "Ты" : "Игрок"}: ${p.score}</div>`;
-            document.getElementById('scores').innerHTML = html;
-            document.getElementById('playerCount').innerText = Object.keys(players).length;
-        }
-
-        function loop() {
-            if (isHost) updateHostLogic();
-            else {
-                if (players["me"]) {
-                    let my = players["me"], moved = false;
-                    if (keys['ArrowLeft'] || keys['KeyA']) { my.x -= 5; moved = true; }
-                    if (keys['ArrowRight'] || keys['KeyD']) { my.x += 5; moved = true; }
-                    if (keys['ArrowUp'] || keys['KeyW']) { my.y -= 5; moved = true; }
-                    if (keys['ArrowDown'] || keys['KeyS']) { my.y += 5; moved = true; }
-                    if (moved) {
-                        my.x = Math.max(20, Math.min(canvas.width - 20, my.x));
-                        my.y = Math.max(20, Math.min(canvas.height - 20, my.y));
-                        sendMoveToHost();
-                    }
+        });
+        renderer.domElement.addEventListener('touchmove', e => {
+            for(let t of e.changedTouches) {
+                if(t.identifier === lookTouchId) {
+                    let dx = t.clientX - lastTouchX;
+                    let dy = t.clientY - lastTouchY;
+                    camera.rotation.y -= dx * 0.005;
+                    camera.rotation.x -= dy * 0.005;
+                    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x)); // Ограничение по X
+                    lastTouchX = t.clientX;
+                    lastTouchY = t.clientY;
                 }
             }
-            draw();
-            requestAnimationFrame(loop);
-        }
+        }, {passive: false});
+        renderer.domElement.addEventListener('touchend', () => { lookTouchId = null; });
 
-        function draw() {
-            ctx.fillStyle = '#111';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // 8. Стрельба (Raycaster)
+        const raycaster = new THREE.Raycaster();
+        const center = new THREE.Vector2(0, 0); // Центр экрана (прицел)
 
-            ctx.beginPath();
-            for (let i = 0; i < 5; i++) {
-                let angle = (i * 72 - 90) * Math.PI / 180;
-                let x = star.x + Math.cos(angle) * star.radius, y = star.y + Math.sin(angle) * star.radius;
-                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-            }
-            for (let i = 0; i < 5; i++) {
-                let angle = ((i + 0.5) * 72 - 90) * Math.PI / 180;
-                let x = star.x + Math.cos(angle) * (star.radius * 0.4), y = star.y + Math.sin(angle) * (star.radius * 0.4);
-                ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.fillStyle = starOwner ? 'gold' : '#555';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 3;
-            ctx.stroke();
-
-            for (let id in players) {
-                const p = players[id], isMe = (id === "me");
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-                ctx.fillStyle = p.color || '#fff';
-                ctx.fill();
-                ctx.strokeStyle = isMe ? '#fff' : '#000';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 14px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(isMe ? 'Ты' : 'Игрок', p.x, p.y - 30);
+        function shoot() {
+            raycaster.setFromCamera(center, camera);
+            const intersects = raycaster.intersectObjects(targets);
+            
+            if (intersects.length > 0) {
+                // Попали в мишень
+                scene.remove(intersects[0].object);
+                targets = targets.filter(t => t !== intersects[0].object);
+                score++;
+                document.getElementById('score').innerText = score;
+                spawnTarget(); // Спавним новую
             }
         }
 
-        function getRandomColor() {
-            const letters = '0123456789ABCDEF';
-            let color = '#';
-            for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
-            return color;
-        }
+        document.getElementById('btnShoot').addEventListener('touchstart', (e) => { e.preventDefault(); shoot(); });
+        window.addEventListener('mousedown', (e) => { if(e.button === 0) shoot(); });
 
-        loop();
+        // 9. Главный цикл
+        let lastTime = performance.now();
+        function animate() {
+            requestAnimationFrame(animate);
+            let delta = (performance.now() - lastTime) / 1000;
+            lastTime = performance.now();
+
+            // Движение
+            let speed = 10 * delta;
+            let forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            let right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            
+            // Обработка ввода (клавиатура + мобилка)
+            let fwdInput = 0, rightInput = 0;
+            if(keys['KeyW'] || keys['ArrowUp']) fwdInput += 1;
+            if(keys['KeyS'] || keys['ArrowDown']) fwdInput -= 1;
+            if(keys['KeyD'] || keys['ArrowRight']) rightInput += 1;
+            if(keys['KeyA'] || keys['ArrowLeft']) rightInput -= 1;
+            
+            fwdInput -= moveY; // Джойстик вверх = вперед
+            rightInput += moveX;
+
+            camera.position.addScaledVector(forward, fwdInput * speed);
+            camera.position.addScaledVector(right, rightInput * speed);
+            camera.position.y = 1.6; // Держим на одной высоте
+
+            // ПК мышь для поворота
+            if (document.pointerLockElement === renderer.domElement) {
+                document.addEventListener('mousemove', (e) => {
+                    camera.rotation.y -= e.movementX * 0.002;
+                    camera.rotation.x -= e.movementY * 0.002;
+                    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Клик по экрану для захвата мыши (на ПК)
+        renderer.domElement.addEventListener('click', () => {
+            if(!('ontouchstart' in window)) renderer.domElement.requestPointerLock();
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
