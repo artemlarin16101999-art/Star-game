@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Битва за Звезду (Host-Client)</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background: #222; overflow: hidden; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; background: #111; }
+        #ui { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 10px; pointer-events: none; }
+        #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #333; padding: 20px; border-radius: 10px; text-align: center; color: white; z-index: 10; }
+        input, button { padding: 10px; margin: 5px; font-size: 16px; border-radius: 5px; border: none; width: 100%; box-sizing: border-box; }
+        button { background: #ffcc00; color: black; font-weight: bold; cursor: pointer; }
+        button:hover { background: #ffaa00; }
+        .scoreboard { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 10px; color: white; text-align: right; }
+    </style>
+</head>
+<body>
+
+    <div id="menu">
+        <h2>Битва за Звезду</h2>
+        <button id="createBtn">Создать Комнату</button>
+        <hr style="border-color: #555;">
+        <input type="text" id="joinCode" placeholder="Введи код комнаты">
+        <button id="joinBtn">Подключиться</button>
+    </div>
+
+    <div id="ui" style="display:none;">
+        Роль: <span id="role" style="font-weight:bold; color:yellow;">...</span><br>
+        Игроков: <span id="playerCount">1</span><br>
+    </div>
+
+    <div id="scoreboard" class="scoreboard" style="display:none;">
+        <h3>Счёт</h3>
+        <div id="scores"></div>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let peer = null;
+        let connections = [];
+        let isHost = false;
+        let myId = "";
+        
+        let players = {}; 
+        let star = { x: canvas.width/2, y: canvas.height/2, radius: 30 };
+        let starOwner = null;
+
+        document.getElementById('createBtn').onclick = () => {
+            peer = new Peer();
+            peer.on('open', (id) => {
+                myId = id;
+                isHost = true;
+                players["me"] = { x: canvas.width/2, y: canvas.height/2 + 100, color: "#00ff00", score: 0, targetX: canvas.width/2, targetY: canvas.height/2 + 100 };
+                document.getElementById('menu').style.display = 'none';
+                document.getElementById('ui').style.display = 'block';
+                document.getElementById('scoreboard').style.display = 'block';
+                document.getElementById('role').innerText = 'Хост';
+                alert("Твой код комнаты: " + id);
+            });
+            
+            peer.on('connection', (conn) => {
+                connections.push(conn);
+                conn.on('open', () => {
+                    conn.send({ type: 'welcome', id: conn.peer, color: getRandomColor() });
+                });
+                conn.on('data', (data) => {
+                    if (data.type === 'move' && players[data.id]) {
+                        players[data.id].targetX = data.x;
+                        players[data.id].targetY = data.y;
+                    }
+                });
+                conn.on('close', () => {
+                    delete players[conn.peer];
+                    connections = connections.filter(c => c !== conn);
+                });
+            });
+        };
+
+        document.getElementById('joinBtn').onclick = () => {
+            const hostId = document.getElementById('joinCode').value.trim();
+            if (!hostId) return alert("Введи код!");
+            
+            peer = new Peer();
+            peer.on('open', (id) => {
+                myId = id;
+                isHost = false;
+                const conn = peer.connect(hostId, { reliable: true });
+                connections.push(conn);
+                
+                conn.on('open', () => {
+                    document.getElementById('menu').style.display = 'none';
+                    document.getElementById('ui').style.display = 'block';
+                    document.getElementById('scoreboard').style.display = 'block';
+                    document.getElementById('role').innerText = 'Клиент';
+                });
+
+                conn.on('data', (data) => {
+                    if (data.type === 'welcome') {
+                        players["me"] = { x: canvas.width/2, y: canvas.height/2 - 100, color: data.color, score: 0, targetX: canvas.width/2, targetY: canvas.height/2 - 100 };
+                        conn.send({ type: 'requestState' });
+                    }
+                    else if (data.type === 'gameState') {
+                        if (!players["me"]) return;
+                        let myX = players["me"].x, myY = players["me"].y, myColor = players["me"].color;
+                        players = data.players;
+                        players["me"] = { x: myX, y: myY, color: myColor, score: data.players["me"] ? data.players["me"].score : 0, targetX: myX, targetY: myY };
+                        starOwner = data.starOwner;
+                        updateScoreboard();
+                    }
+                });
+            });
+        };
+
+        function sendMoveToHost() {
+            if (!isHost && connections[0] && connections[0].open && players["me"]) {
+                connections[0].send({ type: 'move', id: myId, x: players["me"].x, y: players["me"].y });
+            }
+        }
+
+        let touchStart = null;
+        canvas.addEventListener('touchstart', (e) => { touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY }; });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!touchStart || !players["me"]) return;
+            const touch = e.touches[0];
+            players["me"].x += (touch.clientX - touchStart.x) * 0.5;
+            players["me"].y += (touch.clientY - touchStart.y) * 0.5;
+            players["me"].x = Math.max(20, Math.min(canvas.width - 20, players["me"].x));
+            players["me"].y = Math.max(20, Math.min(canvas.height - 20, players["me"].y));
+            touchStart = { x: touch.clientX, y: touch.clientY };
+            sendMoveToHost();
+        }, {passive: false});
+        canvas.addEventListener('touchend', () => touchStart = null);
+
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        function updateHostLogic() {
+            if (!isHost) return;
+            let my = players["me"];
+            if (keys['ArrowLeft'] || keys['KeyA']) my.x -= 5;
+            if (keys['ArrowRight'] || keys['KeyD']) my.x += 5;
+            if (keys['ArrowUp'] || keys['KeyW']) my.y -= 5;
+            if (keys['ArrowDown'] || keys['KeyS']) my.y += 5;
+            my.x = Math.max(20, Math.min(canvas.width - 20, my.x));
+            my.y = Math.max(20, Math.min(canvas.height - 20, my.y));
+
+            for (let id in players) {
+                if (id === "me") continue;
+                let p = players[id];
+                if (p.targetX !== undefined) {
+                    p.x += (p.targetX - p.x) * 0.3;
+                    p.y += (p.targetY - p.y) * 0.3;
+                }
+            }
+
+            let onStar = null;
+            for (let id in players) {
+                if (Math.hypot(players[id].x - star.x, players[id].y - star.y) < star.radius + 20) { onStar = id; break; }
+            }
+            starOwner = onStar;
+            if (starOwner) players[starOwner].score += 1;
+
+            let ids = Object.keys(players);
+            for (let i = 0; i < ids.length; i++) {
+                for (let j = i + 1; j < ids.length; j++) {
+                    let p1 = players[ids[i]], p2 = players[ids[j]];
+                    let dx = p1.x - p2.x, dy = p1.y - p2.y, dist = Math.hypot(dx, dy);
+                    if (dist < 40) {
+                        let f = (40 - dist) * 0.1, angle = Math.atan2(dy, dx);
+                        p1.x += Math.cos(angle) * f; p1.y += Math.sin(angle) * f;
+                        p2.x -= Math.cos(angle) * f; p2.y -= Math.sin(angle) * f;
+                    }
+                }
+            }
+
+            connections.forEach(c => { if (c.open) c.send({ type: 'gameState', players: players, starOwner: starOwner }); });
+            updateScoreboard();
+        }
+
+        function updateScoreboard() {
+            let html = "";
+            let sorted = Object.entries(players).sort((a, b) => b[1].score - a[1].score);
+            for (let [id, p] of sorted) html += `<div style="color:${p.color}">${id === "me" ? "Ты" : "Игрок"}: ${p.score}</div>`;
+            document.getElementById('scores').innerHTML = html;
+            document.getElementById('playerCount').innerText = Object.keys(players).length;
+        }
+
+        function loop() {
+            if (isHost) updateHostLogic();
+            else {
+                if (players["me"]) {
+                    let my = players["me"], moved = false;
+                    if (keys['ArrowLeft'] || keys['KeyA']) { my.x -= 5; moved = true; }
+                    if (keys['ArrowRight'] || keys['KeyD']) { my.x += 5; moved = true; }
+                    if (keys['ArrowUp'] || keys['KeyW']) { my.y -= 5; moved = true; }
+                    if (keys['ArrowDown'] || keys['KeyS']) { my.y += 5; moved = true; }
+                    if (moved) {
+                        my.x = Math.max(20, Math.min(canvas.width - 20, my.x));
+                        my.y = Math.max(20, Math.min(canvas.height - 20, my.y));
+                        sendMoveToHost();
+                    }
+                }
+            }
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        function draw() {
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                let angle = (i * 72 - 90) * Math.PI / 180;
+                let x = star.x + Math.cos(angle) * star.radius, y = star.y + Math.sin(angle) * star.radius;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            for (let i = 0; i < 5; i++) {
+                let angle = ((i + 0.5) * 72 - 90) * Math.PI / 180;
+                let x = star.x + Math.cos(angle) * (star.radius * 0.4), y = star.y + Math.sin(angle) * (star.radius * 0.4);
+                ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = starOwner ? 'gold' : '#555';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            for (let id in players) {
+                const p = players[id], isMe = (id === "me");
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+                ctx.fillStyle = p.color || '#fff';
+                ctx.fill();
+                ctx.strokeStyle = isMe ? '#fff' : '#000';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(isMe ? 'Ты' : 'Игрок', p.x, p.y - 30);
+            }
+        }
+
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
+            return color;
+        }
+
+        loop();
+    </script>
+</body>
+</html>
