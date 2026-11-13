@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Web 3D Shooter: Custom UI + ADS</title>
+    <title>Web 3D Shooter: Pro Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; }
@@ -23,7 +23,7 @@
         #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); transition: 0.1s; }
         #stats { position: absolute; top: 20px; left: 20px; color: white; font-size: 14px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; line-height: 1.5;}
 
-        /* --- UI ЭЛЕМЕНТЫ (Перетаскиваемые) --- */
+        /* --- UI ЭЛЕМЕНТЫ --- */
         .ui-element { position: absolute; z-index: 100; touch-action: none; border-radius: 50%; display: none; text-align: center; font-weight: bold; color: white; border: 2px solid rgba(255,255,255,0.4); }
         
         #joystick { width: 120px; height: 120px; background: rgba(255,255,255,0.1); bottom: 50px; left: 50px; }
@@ -114,6 +114,14 @@
             osc.type = 'triangle'; osc.frequency.setValueAtTime(100 + Math.random()*20, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.1);
             gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
+        function playShootSound() {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+            osc.type = 'square'; osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
             osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1);
         }
 
@@ -286,6 +294,7 @@
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.y = 1.6;
         camera.rotation.order = 'YXZ';
+        scene.add(camera); // Важно для вьюмодели оружия
         
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -297,19 +306,55 @@
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({ color: 0x555555 }));
         floor.rotation.x = -Math.PI / 2; scene.add(floor);
 
+        // --- МОДЕЛЬ ОРУЖИЯ (ВЬЮМОДЕЛЬ) ---
+        const gunGroup = new THREE.Group();
+        camera.add(gunGroup);
+        
+        let gunBody = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.4), new THREE.MeshLambertMaterial({color: 0x333333}));
+        gunGroup.add(gunBody);
+        let gunHandle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.2, 0.1), new THREE.MeshLambertMaterial({color: 0x222222}));
+        gunHandle.position.set(0, -0.1, 0.1); gunHandle.rotation.x = -0.3; gunGroup.add(gunHandle);
+        let gunMuzzle = new THREE.Mesh(new THREE.SphereGeometry(0.04), new THREE.MeshBasicMaterial({color: 0xffaa00}));
+        gunMuzzle.position.set(0, 0, -0.2); gunGroup.add(gunMuzzle);
+        
+        gunGroup.position.set(0.25, -0.25, -0.5);
+        gunGroup.rotation.y = -0.1;
+        let recoilOffset = 0;
+
+        // Карта (Улучшенная)
         let walls = [];
+        function addWall(x, y, z, sx, sy, sz, color) {
+            const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: color }));
+            box.scale.set(sx, sy, sz);
+            box.position.set(x, y, z);
+            scene.add(box); walls.push(box);
+            return box;
+        }
+
         function buildMap(mapName) {
             walls.forEach(w => scene.remove(w)); walls = [];
-            const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-            const wallMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-            const crateMat = new THREE.MeshLambertMaterial({ color: 0xD2B48C });
+            const wallColor = 0x8B4513;
+            const crateColor = 0xD2B48C;
 
             if (mapName === 'dust2') {
-                let w1 = new THREE.Mesh(boxGeo, wallMat); w1.scale.set(20, 5, 2); w1.position.set(-10, 2.5, -20); scene.add(w1); walls.push(w1);
-                let c1 = new THREE.Mesh(boxGeo, crateMat); c1.scale.set(3, 3, 3); c1.position.set(-5, 1.5, -10); scene.add(c1); walls.push(c1);
+                // Стены Лонга
+                addWall(-10, 2.5, -15, 30, 5, 2, wallColor);
+                addWall(10, 2.5, 0, 2, 5, 30, wallColor);
+                // Ящики на А-пленте
+                addWall(-5, 1.5, -10, 3, 3, 3, crateColor);
+                addWall(-2, 1.5, -12, 3, 3, 3, crateColor);
+                addWall(-3.5, 4.5, -11, 2, 3, 2, crateColor); // Ящик повыше
+                // Закуток
+                addWall(15, 2.5, -15, 10, 5, 2, wallColor);
             } else if (mapName === 'mirage') {
-                let w1 = new THREE.Mesh(boxGeo, wallMat); w1.scale.set(2, 6, 30); w1.position.set(-15, 3, 0); scene.add(w1); walls.push(w1);
-                let c1 = new THREE.Mesh(boxGeo, crateMat); c1.scale.set(2, 8, 2); c1.position.set(0, 4, 0); scene.add(c1); walls.push(c1);
+                // Дворец
+                addWall(-15, 3, 0, 2, 6, 30, wallColor);
+                addWall(-8, 3, 15, 15, 6, 2, wallColor);
+                // Колонны и ящики
+                addWall(5, 4, 5, 2, 8, 2, crateColor);
+                addWall(-5, 4, 5, 2, 8, 2, crateColor);
+                addWall(0, 1, -5, 4, 2, 4, crateColor);
+                addWall(10, 2.5, -10, 2, 5, 15, wallColor);
             }
         }
 
@@ -330,11 +375,13 @@
         }
 
         // ==========================================
-        // 4. ЛОГИКА ИГРЫ (С ИСПРАВЛЕННЫМ МЕНЮ)
+        // 4. ЛОГИКА ИГРЫ
         // ==========================================
         let gameActive = false, myHp = 100, myKills = 0, lastShootTime = 0;
         let bullets = [], bots = [];
-        let velocityY = 0, gravity = -25, jumpForce = 9, onGround = true;
+        
+        // Физика
+        let velocityY = 0, gravity = -30, jumpForce = 12, onGround = true;
         let currentSpeed = 10, maxSpeed = 100;
         
         let isCrouching = false;
@@ -344,12 +391,13 @@
         
         let keys = {}, moveX = 0, moveY = 0, yaw = 0, pitch = 0;
         let lastStepTime = 0;
+        
+        let isJumpHeld = false;
 
         function joinGame() {
             initAudio();
             buildMap(document.getElementById('mapSelect').value);
             
-            // Принудительно скрываем ВСЕ меню
             document.getElementById('authScreen').style.display = 'none';
             document.getElementById('menu').style.display = 'none';
             document.getElementById('shopMenu').style.display = 'none';
@@ -360,7 +408,7 @@
             
             showUI();
             gameActive = true;
-            camera.position.set(0, 1.6, 10);
+            camera.position.set(0, 1.6, 15);
             myHp = 100; myKills = 0; currentSpeed = 10;
             
             bots.forEach(b => scene.remove(b.model)); 
@@ -377,7 +425,7 @@
 
         function spawnBot() {
             const model = createStickman(0xffaa00, "BOT");
-            model.position.set((Math.random() - 0.5) * 40, 0, (Math.random() - 0.5) * 40);
+            model.position.set((Math.random() - 0.5) * 30, 0, (Math.random() - 0.5) * 30);
             scene.add(model);
             bots.push({ model: model, hp: 100, lastShoot: 0 });
         }
@@ -390,27 +438,45 @@
                 if (dist > 5) { bot.model.position.x += Math.sin(angle) * 4 * delta; bot.model.position.z += Math.cos(angle) * 4 * delta; }
                 if (dist < 40 && performance.now() - bot.lastShoot > 1200) {
                     bot.lastShoot = performance.now();
-                    spawnBullet(bot.model.position.x, 1.5, bot.model.position.z, angle, 10, "bot");
+                    // Пуля бота
+                    let dir = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle)).normalize();
+                    spawnBullet(bot.model.position.x, 1.5, bot.model.position.z, dir, 10, "bot");
                 }
             });
         }
 
-        function spawnBullet(x, y, z, rotY, dmg, owner) {
+        // ИСПРАВЛЕНА СТРЕЛЬБА И НАПРАВЛЕНИЕ ПУЛЬ
+        function spawnBullet(x, y, z, direction, dmg, owner) {
             const bGeo = new THREE.SphereGeometry(0.15, 8, 8);
             const bMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
             const bMesh = new THREE.Mesh(bGeo, bMat);
             bMesh.position.set(x, y, z); scene.add(bMesh);
-            const pointLight = new THREE.PointLight(0x00ffff, 1, 5); pointLight.position.set(x, y, z); bMesh.add(pointLight);
-            bullets.push({ mesh: bMesh, vx: Math.sin(rotY) * 60, vz: Math.cos(rotY) * 60, owner: owner, dmg: dmg, life: 2.0 });
+            
+            // Добавляем трассер (линию) для видимости
+            const points = [new THREE.Vector3(x, y, z), new THREE.Vector3(x + direction.x * 2, y, z + direction.z * 2)];
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x00ffff });
+            const line = new THREE.Line(lineGeo, lineMat);
+            scene.add(line);
+            setTimeout(() => scene.remove(line), 50);
+
+            bullets.push({ mesh: bMesh, vx: direction.x * 80, vz: direction.z * 80, owner: owner, dmg: dmg, life: 2.0 });
         }
 
         function shoot() {
-            if (!gameActive) return;
+            if (!gameActive || isEditingUI) return;
             let now = performance.now();
             let weapon = WEAPONS[save.activeWeapon];
             if (now - lastShootTime > weapon.rate) {
                 lastShootTime = now;
-                spawnBullet(camera.position.x, camera.position.y, camera.position.z, yaw, weapon.dmg, "player");
+                playShootSound();
+                
+                // Отдача (визуальная)
+                recoilOffset = 0.1;
+                
+                // Правильное направление (Vector3.applyEuler)
+                let dir = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation).normalize();
+                spawnBullet(camera.position.x, camera.position.y - 0.1, camera.position.z, dir, weapon.dmg, "player");
             }
         }
 
@@ -418,9 +484,12 @@
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i];
                 b.mesh.position.x += b.vx * delta; b.mesh.position.z += b.vz * delta; b.life -= delta; let hit = false;
+                
+                // Коллизия с игроком
                 if (b.owner === "bot") {
                     if (Math.hypot(b.mesh.position.x - camera.position.x, b.mesh.position.z - camera.position.z) < 1.0) {
-                        hit = true; myHp -= b.dmg; if(myHp <= 0) { myHp = 100; camera.position.set(0,1.6,0); }
+                        hit = true; myHp -= b.dmg; 
+                        if(myHp <= 0) { myHp = 100; camera.position.set(0,1.6,0); }
                     }
                 } else if (b.owner === "player") {
                     bots.forEach((bot, index) => {
@@ -430,28 +499,47 @@
                         }
                     });
                 }
-                walls.forEach(w => { if (Math.abs(b.mesh.position.x - w.position.x) < w.scale.x/2 && Math.abs(b.mesh.position.z - w.position.z) < w.scale.z/2) hit = true; });
+                
+                // Коллизия со стенами
+                walls.forEach(w => { 
+                    if (Math.abs(b.mesh.position.x - w.position.x) < w.scale.x/2 && 
+                        Math.abs(b.mesh.position.z - w.position.z) < w.scale.z/2) hit = true; 
+                });
+                
                 if (hit || b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
             }
         }
 
         // ==========================================
-        // 5. УПРАВЛЕНИЕ
+        // 5. УПРАВЛЕНИЕ И КОЛЛИЗИЯ
         // ==========================================
+        function checkCollision(nx, nz) {
+            let r = 0.8; // Радиус игрока
+            for(let w of walls) {
+                if(nx > w.position.x - w.scale.x/2 - r && nx < w.position.x + w.scale.x/2 + r &&
+                   nz > w.position.z - w.scale.z/2 - r && nz < w.position.z + w.scale.z/2 + r) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         window.addEventListener('keydown', e => {
             keys[e.code] = true;
             if(e.code === 'Space' && onGround && gameActive && !isEditingUI) {
-                velocityY = jumpForce; onGround = false; currentSpeed = Math.min(currentSpeed + 5, maxSpeed);
+                velocityY = jumpForce; onGround = false; currentSpeed = Math.min(currentSpeed + 5, maxSpeed); isJumpHeld = true;
             }
             if(e.code === 'KeyC' && gameActive) { isCrouching = true; targetHeight = 1.0; }
             if(e.code === 'ShiftLeft' && gameActive) { isAds = true; targetFov = 40; }
         });
         window.addEventListener('keyup', e => {
             keys[e.code] = false;
+            if(e.code === 'Space') isJumpHeld = false;
             if(e.code === 'KeyC') { isCrouching = false; targetHeight = 1.6; }
             if(e.code === 'ShiftLeft') { isAds = false; targetFov = 75; }
         });
 
+        // UI Слушатели (Button Fix)
         const joy = document.getElementById('joystick');
         const knob = document.getElementById('joyKnob');
         let joyTouchId = null;
@@ -473,12 +561,17 @@
         }, {passive: false});
         joy.addEventListener('touchend', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); for (let i=0; i<e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joyTouchId) { joyTouchId = null; moveX = 0; moveY = 0; knob.style.transform = `translate(0px, 0px)`; } } }, {passive: false});
 
+        // Поворот камеры (Исключаем зону кнопки огня, чтобы не было конфликтов)
         let lookTouchId = null, lastLookX = 0, lastLookY = 0;
         renderer.domElement.addEventListener('touchstart', (e) => {
             if(isEditingUI) return;
             for (let i=0; i<e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
-                if (t.clientX > window.innerWidth / 3) { lookTouchId = t.identifier; lastLookX = t.clientX; lastLookY = t.clientY; }
+                // Игнорируем правую нижнюю часть, где кнопки
+                let isRightBottom = (t.clientX > window.innerWidth - 160 && t.clientY > window.innerHeight - 160);
+                if (t.clientX > window.innerWidth / 3 && !isRightBottom) { 
+                    lookTouchId = t.identifier; lastLookX = t.clientX; lastLookY = t.clientY; 
+                }
             }
         }, {passive: false});
         renderer.domElement.addEventListener('touchmove', (e) => {
@@ -505,12 +598,21 @@
         });
         renderer.domElement.addEventListener('click', () => { if(!('ontouchstart' in window) && gameActive) renderer.domElement.requestPointerLock(); });
 
-        document.getElementById('btnShoot').addEventListener('touchstart', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); shoot(); }, {passive: false});
-        window.addEventListener('mousedown', (e) => { if(e.button === 0 && !('ontouchstart' in window) && gameActive && !isEditingUI) shoot(); });
-        
+        // Огонь
+        document.getElementById('btnShoot').addEventListener('pointerdown', (e) => { 
+            if(isEditingUI) return; 
+            e.preventDefault(); e.stopPropagation(); 
+            shoot(); 
+        });
+
+        // Прыжок (с зажатием)
         document.getElementById('btnJump').addEventListener('touchstart', (e) => {
             if(isEditingUI) return; e.preventDefault(); e.stopPropagation();
-            if(onGround && gameActive) { velocityY = jumpForce; onGround = false; currentSpeed = Math.min(currentSpeed + 5, maxSpeed); }
+            if(onGround && gameActive) { velocityY = jumpForce; onGround = false; currentSpeed = Math.min(currentSpeed + 5, maxSpeed); isJumpHeld = true; }
+        }, {passive: false});
+        document.getElementById('btnJump').addEventListener('touchend', (e) => {
+            if(isEditingUI) return; e.preventDefault(); e.stopPropagation();
+            isJumpHeld = false;
         }, {passive: false});
 
         document.getElementById('btnCrouch').addEventListener('touchstart', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); isCrouching = true; targetHeight = 1.0; }, {passive: false});
@@ -532,15 +634,24 @@
             if (gameActive && !isEditingUI) {
                 camera.rotation.set(pitch, yaw, 0);
                 
+                // FOV (Прицел)
                 if(Math.abs(camera.fov - targetFov) > 0.1) {
-                    camera.fov += (targetFov - camera.fov) * 10 * delta;
+                    camera.fov += (targetFov - camera.fov) * 15 * delta;
                     camera.updateProjectionMatrix();
                     document.getElementById('crosshair').style.transform = `translate(-50%, -50%) scale(${isAds ? 0.5 : 1})`;
                 }
 
+                // Присед
                 if(Math.abs(camera.position.y - targetHeight) > 0.05) {
-                    camera.position.y += (targetHeight - camera.position.y) * 10 * delta;
+                    camera.position.y += (targetHeight - camera.position.y) * 15 * delta;
                 }
+                
+                // Отдача оружия
+                if (recoilOffset > 0) {
+                    recoilOffset -= 2 * delta;
+                    if (recoilOffset < 0) recoilOffset = 0;
+                }
+                gunGroup.position.z = -0.5 + recoilOffset;
 
                 let forward = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
                 let right = new THREE.Vector3(1, 0, 0).applyEuler(camera.rotation);
@@ -556,10 +667,22 @@
                 moveVec.addScaledVector(forward, fwdInput);
                 moveVec.addScaledVector(right, rightInput);
                 
+                // Движение + Коллизия
                 if(moveVec.length() > 0) {
                     moveVec.normalize();
                     let speedMult = isCrouching ? 0.5 : 1.0;
-                    camera.position.addScaledVector(moveVec, currentSpeed * speedMult * delta);
+                    let moveSpeed = currentSpeed * speedMult * delta;
+
+                    // Разделяем движение по осям для скольжения вдоль стен
+                    let nextX = camera.position.x + moveVec.x * moveSpeed;
+                    if (!checkCollision(nextX, camera.position.z)) {
+                        camera.position.x = nextX;
+                    }
+
+                    let nextZ = camera.position.z + moveVec.z * moveSpeed;
+                    if (!checkCollision(camera.position.x, nextZ)) {
+                        camera.position.z = nextZ;
+                    }
                     
                     if (onGround) {
                         currentSpeed = Math.max(10, currentSpeed - 30 * delta);
@@ -570,18 +693,27 @@
                     }
                 }
 
+                // Прыжок и гравитация (Hold to jump higher)
                 if(!onGround || velocityY > 0) {
                     camera.position.y += velocityY * delta;
-                    velocityY += gravity * delta;
+                    
+                    if (!isJumpHeld && velocityY > 0) {
+                        velocityY -= 50 * delta; // Быстрое падение, если отпустили
+                    } else {
+                        velocityY += gravity * delta;
+                    }
                 }
 
                 if (camera.position.y <= targetHeight) {
                     camera.position.y = targetHeight;
                     velocityY = 0; onGround = true;
-                } else { onGround = false; }
+                } else { 
+                    onGround = false; 
+                }
 
-                camera.position.x = Math.max(-50, Math.min(50, camera.position.x));
-                camera.position.z = Math.max(-50, Math.min(50, camera.position.z));
+                // Ограничение карты
+                camera.position.x = Math.max(-80, Math.min(80, camera.position.x));
+                camera.position.z = Math.max(-80, Math.min(80, camera.position.z));
 
                 updateBots(delta);
                 updateBullets(delta);
