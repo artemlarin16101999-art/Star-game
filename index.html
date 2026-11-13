@@ -2,92 +2,84 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>Web 3D Shooter: Click & Play</title>
-    <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Trystero (обход блокировок, MQTT) -->
     <script src="https://cdn.jsdelivr.net/npm/trystero@0.21.0/dist/trystero-mqtt.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; }
         canvas { display: block; }
-        
-        /* --- АВТОРИЗАЦИЯ --- */
-        #authScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 200; }
+
+        /* --- МЕНЮ --- */
+        #authScreen, #menu, #shopMenu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 200; }
+        #menu, #shopMenu { background: rgba(0,0,0,0.85); display: none; }
         .input-box { padding: 12px; margin: 5px; font-size: 16px; border-radius: 5px; border: 1px solid #555; background: #222; color: white; width: 250px; text-align: center; }
-        
-        /* --- МЕНЮ И МАГАЗИН --- */
-        #menu, #shopMenu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 100; }
-        #menu h1 { color: #ffcc00; font-size: 40px; text-shadow: 2px 2px 5px #000; margin-bottom: 5px;}
-        #menu p { font-size: 20px; margin: 5px 0; }
         .btn { padding: 12px 20px; margin: 5px; font-size: 16px; border: none; border-radius: 5px; background: #ffcc00; color: black; font-weight: bold; cursor: pointer; width: 250px; }
-        .btn:hover { background: #ffaa00; }
+        .btn-green { background: #00ff00; font-size: 20px; padding: 15px; }
         .btn-red { background: #ff4444; color: white; }
-        .btn-green { background: #00ff00; color: black; font-size: 20px; padding: 15px; }
         .btn-small { width: auto; padding: 10px 15px; font-size: 14px; }
         .shop-item { background: #333; padding: 10px 15px; margin: 5px; border-radius: 10px; width: 300px; display: flex; justify-content: space-between; align-items: center; }
-        
+
         /* --- HUD --- */
         #hud { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); }
         #stats { position: absolute; top: 20px; left: 20px; color: white; font-size: 16px; font-weight: bold; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; }
-        #timer { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-size: 30px; font-weight: bold; }
         #killfeed { position: absolute; top: 60px; right: 20px; color: white; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; font-size: 14px; text-align: right; }
-        
+
         /* --- УПРАВЛЕНИЕ --- */
-        #joystick { display: none; position: absolute; bottom: 50px; left: 50px; width: 120px; height: 120px; background: rgba(255,255,255,0.2); border-radius: 50%; touch-action: none; z-index: 50; }
-        #btnShoot { display: none; position: absolute; bottom: 50px; right: 50px; width: 100px; height: 100px; background: rgba(255,0,0,0.6); border-radius: 50%; color: white; font-size: 20px; font-weight: bold; text-align: center; line-height: 100px; touch-action: none; z-index: 50; }
+        #joystick { display: none; position: absolute; bottom: 50px; left: 50px; width: 120px; height: 120px; background: rgba(255,255,255,0.2); border-radius: 50%; touch-action: none; z-index: 100; border: 2px solid rgba(255,255,255,0.3); }
+        #joyKnob { position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: rgba(255,255,255,0.6); border-radius: 50%; pointer-events: none; }
+        
+        #btnShoot { display: none; position: absolute; bottom: 50px; right: 50px; width: 100px; height: 100px; background: rgba(255,0,0,0.6); border-radius: 50%; color: white; font-size: 20px; font-weight: bold; text-align: center; line-height: 100px; touch-action: none; z-index: 100; border: 2px solid #ff0000; }
+        
+        /* Блокировка кнопки выхода */
+        #exitBtn { position: absolute; top: 20px; right: 20px; padding: 10px; background: red; color: white; border: none; border-radius: 5px; z-index: 200; display: none; }
     </style>
 </head>
 <body>
 
-    <!-- Экран Авторизации -->
     <div id="authScreen">
-        <h1 style="color:#ffcc00;">ВХОД В ИГРУ</h1>
-        <input type="text" id="authUser" class="input-box" placeholder="Твой Никнейм">
+        <h1 style="color:#ffcc00;">ВХОД</h1>
+        <input type="text" id="authUser" class="input-box" placeholder="Никнейм">
         <input type="password" id="authPass" class="input-box" placeholder="Пароль">
-        <button class="btn" onclick="login()">ВОЙТИ / СОЗДАТЬ</button>
+        <button class="btn" onclick="login()">ВОЙТИ</button>
     </div>
 
-    <!-- Главное меню -->
     <div id="menu">
-        <h1>WEB 3D SHOOTER</h1>
-        <p>Игрок: <span id="menuUser" style="color:#00ff00; font-weight:bold;"></span></p>
+        <h1>3D SHOOTER</h1>
+        <p>Игрок: <span id="menuUser" style="color:#00ff00;"></span></p>
         <p>Монеты: <span id="menuCoins">0</span> 🪙</p>
-        
         <button class="btn btn-green" onclick="joinGlobalGame()">В БОЙ (Онлайн)</button>
         <button class="btn" onclick="openShop()">МАГАЗИН</button>
-
         <div style="margin-top: 20px; display:flex; gap: 5px;">
-            <input type="text" id="promoInput" placeholder="Промокод" style="padding:10px; font-size:14px; border-radius:5px; border:none; width: 150px;">
-            <button class="btn btn-small" style="background:#00ccff;" onclick="applyPromo()">АКТИВИРОВАТЬ</button>
+            <input type="text" id="promoInput" placeholder="Промокод" style="padding:10px; border-radius:5px; border:none; width: 150px;">
+            <button class="btn btn-small" style="background:#00ccff;" onclick="applyPromo()">ОК</button>
         </div>
     </div>
 
-    <!-- Магазин -->
     <div id="shopMenu">
         <h1>МАГАЗИН</h1>
         <p>Монеты: <span id="shopCoins">0</span> 🪙</p>
         <div class="shop-item">
             <span>Винтовка (Урон 35)</span>
-            <button class="btn btn-small" onclick="buyWeapon('rifle', 100)">Купить (100)</button>
+            <button class="btn btn-small" onclick="buyWeapon('rifle', 100)">100</button>
         </div>
         <div class="shop-item">
             <span>Снайперка (Урон 100)</span>
-            <button class="btn btn-small" onclick="buyWeapon('sniper', 300)">Купить (300)</button>
+            <button class="btn btn-small" onclick="buyWeapon('sniper', 300)">300</button>
         </div>
         <button class="btn btn-red" style="margin-top:20px;" onclick="closeShop()">НАЗАД</button>
     </div>
 
-    <!-- HUD -->
     <div id="hud">
         <div id="crosshair"></div>
         <div id="stats">HP: 100 | Оружие: <span id="hudWeapon">Пистолет</span> | Убийств: <span id="hudKills">0</span></div>
-        <div id="timer">Бесконечно</div>
         <div id="killfeed"></div>
+        <button id="exitBtn" onclick="location.reload()">ВЫЙТИ</button>
     </div>
 
-    <div id="joystick"></div>
+    <!-- Джойстик с кружком внутри -->
+    <div id="joystick"><div id="joyKnob"></div></div>
     <div id="btnShoot">ОГОНЬ</div>
 
     <script>
@@ -106,15 +98,11 @@
             let u = document.getElementById('authUser').value.trim();
             let p = document.getElementById('authPass').value;
             if(!u || !p) return alert("Заполни ник и пароль!");
-            
             let savedPass = localStorage.getItem('fps_pass_' + u);
             if (savedPass) { if (savedPass !== p) return alert("Неверный пароль!"); } 
             else { localStorage.setItem('fps_pass_' + u, p); }
-
-            currentUser = u;
-            localStorage.setItem('fps_active_user', u);
-            loadSave();
-            showMenu();
+            currentUser = u; localStorage.setItem('fps_active_user', u);
+            loadSave(); showMenu();
         }
 
         function loadSave() {
@@ -127,32 +115,25 @@
         function saveData() { if(currentUser) localStorage.setItem('fps_save_' + currentUser, JSON.stringify(save)); }
         function showMenu() { document.getElementById('authScreen').style.display = 'none'; document.getElementById('menu').style.display = 'flex'; document.getElementById('menuUser').innerText = currentUser; }
         function updateCoins() { document.getElementById('menuCoins').innerText = save.coins; document.getElementById('shopCoins').innerText = save.coins; }
-
-        window.onload = () => {
-            let active = localStorage.getItem('fps_active_user');
-            if(active) { currentUser = active; loadSave(); showMenu(); }
-        };
+        window.onload = () => { let a = localStorage.getItem('fps_active_user'); if(a) { currentUser = a; loadSave(); showMenu(); } };
 
         function applyPromo() {
-            let code = document.getElementById('promoInput').value.trim();
-            if (code === "Петушара2026") {
-                if (save.usedPromos.includes(code)) return alert("Ты уже активировал этот промокод!");
-                save.coins += 1000; save.usedPromos.push(code); saveData(); updateCoins();
-                alert("Промокод принят! +1000 монет! 🪙");
-            } else { alert("Неверный промокод."); }
+            if (document.getElementById('promoInput').value.trim() === "Петушара2026") {
+                if (save.usedPromos.includes("Петушара2026")) return alert("Уже активирован!");
+                save.coins += 1000; save.usedPromos.push("Петушара2026"); saveData(); updateCoins(); alert("+1000 монет!");
+            } else alert("Неверный код.");
         }
-
         function openShop() { document.getElementById('menu').style.display = 'none'; document.getElementById('shopMenu').style.display = 'flex'; }
         function closeShop() { document.getElementById('shopMenu').style.display = 'none'; document.getElementById('menu').style.display = 'flex'; }
         function buyWeapon(w, price) {
             if (save.coins >= price && !save.weapons.includes(w)) {
                 save.coins -= price; save.weapons.push(w); save.activeWeapon = w;
-                saveData(); updateCoins(); alert("Куплено! Оружие экипировано.");
-            } else { alert("Не хватает монет или уже куплено!"); }
+                saveData(); updateCoins(); alert("Куплено!");
+            } else alert("Не хватает или уже куплено!");
         }
 
         // ==========================================
-        // 2. НАСТРОЙКА 3D
+        // 2. 3D НАСТРОЙКА
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
@@ -176,7 +157,7 @@
 
         const walls = [];
         const wallMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 15; i++) {
             const box = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 4), wallMat);
             box.position.set((Math.random() - 0.5) * 60, 2.5, (Math.random() - 0.5) * 60);
             if(Math.hypot(box.position.x, box.position.z) > 10) { scene.add(box); walls.push(box); }
@@ -209,79 +190,64 @@
         }
 
         // ==========================================
-        // 3. TRYSTERO МУЛЬТИПЛЕЕР (БЕЗ VPN)
+        // 3. МУЛЬТИПЛЕЕР (Trystero)
         // ==========================================
-        let room = null;
-        let gameActive = false;
-        let myId = Math.random().toString(36).substr(2, 9);
-        let myHp = 100;
-        let myKills = 0;
-        let lastShootTime = 0;
-        let players = {}; // Другие игроки
-        let bullets = []; // Пули
-
-        // Подключаемся к Trystero (используем MQTT, он редко блокируется)
-        const config = { appId: 'artem-web-shooter-2026' };
-        const globalRoomName = 'GlobalLobby'; // Все заходят сюда
-
-        // Сетевые функции
+        let room = null, gameActive = false, myId = Math.random().toString(36).substr(2, 9);
+        let myHp = 100, myKills = 0, lastShootTime = 0;
+        let players = {}, bullets = [];
         let sendMove, sendShoot, sendHit;
 
         function joinGlobalGame() {
             document.getElementById('menu').style.display = 'none';
             document.getElementById('hud').style.display = 'block';
-            if('ontouchstart' in window) {
-                document.getElementById('joystick').style.display = 'block';
-                document.getElementById('btnShoot').style.display = 'block';
-            }
+            document.getElementById('exitBtn').style.display = 'block';
+            
+            // Принудительно показываем управление
+            document.getElementById('joystick').style.display = 'block';
+            document.getElementById('btnShoot').style.display = 'block';
+            
             document.getElementById('hudWeapon').innerText = WEAPONS[save.activeWeapon].name;
-            
             gameActive = true;
-            camera.position.set(Math.random() * 10, 1.6, Math.random() * 10); // Спавн в рандомном месте
+            camera.position.set(Math.random() * 10, 1.6, Math.random() * 10);
 
-            // Инициализация сети Trystero
-            room = Trystero.joinRoom(config, globalRoomName);
-            
-            const actions = {
-                move: room.makeAction('move'),
-                shoot: room.makeAction('shoot'),
-                hit: room.makeAction('hit')
-            };
-            sendMove = actions.move[0];
-            sendShoot = actions.shoot[0];
-            sendHit = actions.hit[0];
+            try {
+                const config = { appId: 'artem-web-shooter-2026' };
+                room = Trystero.joinRoom(config, 'GlobalLobby');
+                
+                const actions = {
+                    move: room.makeAction('move'),
+                    shoot: room.makeAction('shoot'),
+                    hit: room.makeAction('hit')
+                };
+                sendMove = actions.move[0]; sendShoot = actions.shoot[0]; sendHit = actions.hit[0];
 
-            // Когда кто-то заходит
-            room.onPeerJoin(peerId => {
-                players[peerId] = { model: createStickman(0xffaa00, "Player"), hp: 100, x: 0, z: 0, rotY: 0 };
-                scene.add(players[peerId].model);
-                addKillFeed(`Игрок ${peerId.substr(0,4)} зашел!`);
-            });
+                room.onPeerJoin(peerId => {
+                    players[peerId] = { model: createStickman(0xffaa00, "Player"), hp: 100, x: 0, z: 0, rotY: 0 };
+                    scene.add(players[peerId].model);
+                    addKillFeed(`Игрок ${peerId.substr(0,4)} зашел!`);
+                });
 
-            // Когда кто-то выходит
-            room.onPeerLeave(peerId => {
-                if(players[peerId]) { scene.remove(players[peerId].model); delete players[peerId]; }
-                addKillFeed(`Игрок отключился.`);
-            });
+                room.onPeerLeave(peerId => {
+                    if(players[peerId]) { scene.remove(players[peerId].model); delete players[peerId]; }
+                    addKillFeed(`Игрок отключился.`);
+                });
 
-            // Получение данных о движении
-            actions.move[1]((data, peerId) => {
-                if(players[peerId]) {
-                    players[peerId].x = data.x; players[peerId].z = data.z; players[peerId].rotY = data.rotY;
-                    players[peerId].model.position.set(data.x, 0, data.z);
-                    players[peerId].model.rotation.y = data.rotY;
-                }
-            });
+                actions.move[1]((data, peerId) => {
+                    if(players[peerId]) {
+                        players[peerId].x = data.x; players[peerId].z = data.z; players[peerId].rotY = data.rotY;
+                        players[peerId].model.position.set(data.x, 0, data.z);
+                        players[peerId].model.rotation.y = data.rotY;
+                    }
+                });
 
-            // Получение выстрелов
-            actions.shoot[1]((data, peerId) => {
-                spawnBullet(data.x, data.z, data.rotY, data.dmg, peerId);
-            });
-
-            // Получение урона
-            actions.hit[1]((data, peerId) => {
-                takeDamage(data.dmg);
-            });
+                actions.shoot[1]((data, peerId) => spawnBullet(data.x, data.z, data.rotY, data.dmg, peerId));
+                actions.hit[1]((data, peerId) => takeDamage(data.dmg));
+                
+                addKillFeed("Подключение к сети...");
+            } catch (e) {
+                console.log("Ошибка сети: ", e);
+                addKillFeed("Одиночный режим (нет сети)");
+            }
         }
 
         function addKillFeed(text) {
@@ -289,12 +255,9 @@
             const msg = document.createElement('div');
             msg.innerText = text;
             feed.appendChild(msg);
-            setTimeout(() => msg.remove(), 4000);
+            setTimeout(() => msg.remove(), 3000);
         }
 
-        // ==========================================
-        // 4. СТРЕЛЬБА И ЛОГИКА
-        // ==========================================
         function spawnBullet(x, z, rotY, dmg, owner) {
             const bMesh = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
             bMesh.position.set(x, 1.5, z);
@@ -308,9 +271,7 @@
             let weapon = WEAPONS[save.activeWeapon];
             if (now - lastShootTime > weapon.rate) {
                 lastShootTime = now;
-                // Спавним пулю локально
                 spawnBullet(camera.position.x, camera.position.z, yaw, weapon.dmg, myId);
-                // Отправляем другим
                 if(sendShoot) sendShoot({ x: camera.position.x, z: camera.position.z, rotY: yaw, dmg: weapon.dmg });
             }
         }
@@ -318,7 +279,7 @@
         function takeDamage(dmg) {
             myHp -= dmg;
             if (myHp <= 0) {
-                myHp = 100; // Респавн
+                myHp = 100;
                 camera.position.set(Math.random() * 20 - 10, 1.6, Math.random() * 20 - 10);
                 addKillFeed("Тебя убили!");
             }
@@ -332,75 +293,101 @@
                 b.life -= delta;
                 let hit = false;
 
-                // Проверка попадания в других игроков
                 for (let id in players) {
                     if (id !== b.owner) {
                         let p = players[id];
                         if (Math.hypot(b.mesh.position.x - p.x, b.mesh.position.z - p.z) < 1.2) {
                             hit = true;
                             if (b.owner === myId && sendHit) {
-                                sendHit({ dmg: b.dmg }, id); // Отправляем урон конкретному игроку
+                                sendHit({ dmg: b.dmg }, id);
                                 myKills++;
-                                addKillFeed(`Ты убил игрока ${id.substr(0,4)}!`);
+                                addKillFeed(`Ты убил ${id.substr(0,4)}!`);
                             }
                         }
                     }
                 }
 
-                // Стены
                 walls.forEach(w => { if (Math.abs(b.mesh.position.x - w.position.x) < 2 && Math.abs(b.mesh.position.z - w.position.z) < 2) hit = true; });
-
-                if (hit || b.life <= 0 || Math.abs(b.mesh.position.x) > 60 || Math.abs(b.mesh.position.z) > 60) { 
-                    scene.remove(b.mesh); bullets.splice(i, 1); 
-                }
+                if (hit || b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
             }
         }
 
         // ==========================================
-        // 5. УПРАВЛЕНИЕ
+        // 4. УПРАВЛЕНИЕ (Pointer Events)
         // ==========================================
         let moveX = 0, moveY = 0, yaw = 0, pitch = 0;
         let keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
+        // --- ДЖОЙСТИК ---
         const joy = document.getElementById('joystick');
-        let joyTouchId = null;
-        joy.addEventListener('touchstart', e => { e.preventDefault(); joyTouchId = e.changedTouches[0].identifier; }, {passive: false});
-        joy.addEventListener('touchmove', e => {
-            e.preventDefault();
-            for(let t of e.changedTouches) {
-                if(t.identifier === joyTouchId) {
-                    let rect = joy.getBoundingClientRect();
-                    moveX = Math.max(-1, Math.min(1, (t.clientX - (rect.left + rect.width/2)) / 60)); 
-                    moveY = Math.max(-1, Math.min(1, (t.clientY - (rect.top + rect.height/2)) / 60));
-                }
-            }
-        }, {passive: false});
-        joy.addEventListener('touchend', () => { joyTouchId = null; moveX = 0; moveY = 0; });
+        const knob = document.getElementById('joyKnob');
+        let isDraggingJoy = false;
 
-        let lookTouchId = null, lastTouchX = 0, lastTouchY = 0;
-        window.addEventListener('touchstart', e => {
-            for(let t of e.changedTouches) {
-                if(t.target === renderer.domElement && t.clientX > window.innerWidth / 3) {
-                    lookTouchId = t.identifier; lastTouchX = t.clientX; lastTouchY = t.clientY;
-                }
-            }
-        }, {passive: false});
-        window.addEventListener('touchmove', e => {
-            for(let t of e.changedTouches) {
-                if(t.identifier === lookTouchId) {
-                    e.preventDefault();
-                    yaw -= (t.clientX - lastTouchX) * 0.005; pitch -= (t.clientY - lastTouchY) * 0.005;
-                    pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, pitch));
-                    lastTouchX = t.clientX; lastTouchY = t.clientY;
-                }
-            }
-        }, {passive: false});
-        window.addEventListener('touchend', e => { for(let t of e.changedTouches) { if(t.identifier === lookTouchId) lookTouchId = null; } });
+        joy.addEventListener('pointerdown', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            isDraggingJoy = true;
+            joy.setPointerCapture(e.pointerId);
+        });
 
-        document.getElementById('btnShoot').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); shoot(); }, {passive: false});
+        joy.addEventListener('pointermove', (e) => {
+            if (!isDraggingJoy) return;
+            e.preventDefault(); e.stopPropagation();
+            
+            let rect = joy.getBoundingClientRect();
+            let centerX = rect.left + rect.width / 2;
+            let centerY = rect.top + rect.height / 2;
+            
+            let dx = e.clientX - centerX;
+            let dy = e.clientY - centerY;
+            
+            // Ограничиваем круг (радиус 60)
+            let dist = Math.hypot(dx, dy);
+            let maxDist = 60;
+            if (dist > maxDist) { dx = (dx/dist) * maxDist; dy = (dy/dist) * maxDist; }
+            
+            // Визуально двигаем кружок
+            knob.style.transform = `translate(${dx}px, ${dy}px)`;
+            
+            // Значения для игры
+            moveX = dx / maxDist;
+            moveY = dy / maxDist;
+        });
+
+        joy.addEventListener('pointerup', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            isDraggingJoy = false;
+            moveX = 0; moveY = 0;
+            knob.style.transform = `translate(0px, 0px)`;
+        });
+
+        // --- КАМЕРА (Свайп по экрану) ---
+        let isLooking = false, lastLookX = 0, lastLookY = 0;
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            if (e.clientX > window.innerWidth / 3) {
+                isLooking = true;
+                lastLookX = e.clientX; lastLookY = e.clientY;
+                renderer.domElement.setPointerCapture(e.pointerId);
+            }
+        });
+
+        renderer.domElement.addEventListener('pointermove', (e) => {
+            if (!isLooking) return;
+            let dx = e.clientX - lastLookX;
+            let dy = e.clientY - lastLookY;
+            yaw -= dx * 0.005; pitch -= dy * 0.005;
+            pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, pitch));
+            lastLookX = e.clientX; lastLookY = e.clientY;
+        });
+
+        renderer.domElement.addEventListener('pointerup', (e) => { isLooking = false; });
+
+        // --- СТРЕЛЬБА ---
+        const btnShoot = document.getElementById('btnShoot');
+        btnShoot.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); shoot(); });
         window.addEventListener('mousedown', (e) => { if(e.button === 0 && !('ontouchstart' in window)) shoot(); });
+
         document.addEventListener('mousemove', (e) => {
             if (document.pointerLockElement === renderer.domElement) {
                 yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002;
@@ -410,7 +397,7 @@
         renderer.domElement.addEventListener('click', () => { if(!('ontouchstart' in window)) renderer.domElement.requestPointerLock(); });
 
         // ==========================================
-        // 6. ГЛАВНЫЙ ЦИКЛ
+        // 5. ГЛАВНЫЙ ЦИКЛ
         // ==========================================
         let lastTime = performance.now();
         let sendTimer = 0;
@@ -423,7 +410,7 @@
             if (gameActive) {
                 camera.rotation.set(pitch, yaw, 0);
                 
-                let speed = 8 * delta;
+                let speed = 10 * delta; // Чуть быстрее
                 let forward = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
                 let right = new THREE.Vector3(1, 0, 0).applyEuler(camera.rotation);
                 
@@ -432,6 +419,7 @@
                 if(keys['KeyS'] || keys['ArrowDown']) fwdInput -= 1;
                 if(keys['KeyD'] || keys['ArrowRight']) rightInput += 1;
                 if(keys['KeyA'] || keys['ArrowLeft']) rightInput -= 1;
+                
                 fwdInput -= moveY; rightInput += moveX;
 
                 camera.position.addScaledVector(forward, fwdInput * speed);
@@ -442,7 +430,6 @@
 
                 updateBullets(delta);
 
-                // Отправляем свою позицию 10 раз в секунду
                 sendTimer += delta;
                 if (sendTimer > 0.1 && sendMove) {
                     sendMove({ x: camera.position.x, z: camera.position.z, rotY: yaw });
@@ -452,7 +439,6 @@
                 document.getElementById('hudKills').innerText = myKills;
                 document.getElementById('stats').innerHTML = `HP: ${myHp} | Оружие: ${WEAPONS[save.activeWeapon].name} | Убийств: ${myKills}`;
             }
-
             renderer.render(scene, camera);
         }
         animate();
