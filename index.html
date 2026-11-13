@@ -23,7 +23,7 @@
         #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); transition: 0.1s; }
         #stats { position: absolute; top: 20px; left: 20px; color: white; font-size: 14px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; line-height: 1.5;}
 
-        /* --- UI ЭЛЕМЕНТЫ (Теперь перетаскиваемые) --- */
+        /* --- UI ЭЛЕМЕНТЫ (Перетаскиваемые) --- */
         .ui-element { position: absolute; z-index: 100; touch-action: none; border-radius: 50%; display: none; text-align: center; font-weight: bold; color: white; border: 2px solid rgba(255,255,255,0.4); }
         
         #joystick { width: 120px; height: 120px; background: rgba(255,255,255,0.1); bottom: 50px; left: 50px; }
@@ -43,13 +43,11 @@
 </head>
 <body>
 
-    <!-- Экран редактирования интерфейса -->
     <div id="editBar">
         РЕЖИМ РЕДАКТИРОВАНИЯ: Перетаскивай кнопки пальцем
         <button style="margin-left: 20px; padding: 5px 15px; font-weight: bold;" onclick="saveUI()">СОХРАНИТЬ</button>
     </div>
 
-    <!-- Экраны -->
     <div id="authScreen">
         <h1 style="color:#ffcc00;">ВХОД</h1>
         <input type="text" id="authUser" class="input-box" placeholder="Никнейм">
@@ -88,7 +86,6 @@
         <button class="btn btn-red" style="margin-top:20px;" onclick="saveSettings()">СОХРАНИТЬ</button>
     </div>
 
-    <!-- HUD -->
     <div id="hud">
         <div id="crosshair"></div>
         <button id="exitBtn" onclick="leaveGame()">В МЕНЮ</button>
@@ -99,7 +96,6 @@
         </div>
     </div>
 
-    <!-- UI Элементы (с классами для перетаскивания) -->
     <div id="joystick" class="ui-element"><div id="joyKnob"></div></div>
     <div id="btnShoot" class="ui-element">ОГОНЬ</div>
     <div id="btnJump" class="ui-element">ПРЫЖОК</div>
@@ -193,7 +189,7 @@
         }
 
         // ==========================================
-        // 2. РЕДАКТОР ИНТЕРФЕЙСА (Перетаскивание кнопок)
+        // 2. РЕДАКТОР ИНТЕРФЕЙСА
         // ==========================================
         let isEditingUI = false;
         const uiElements = ['joystick', 'btnShoot', 'btnJump', 'btnCrouch', 'btnAds'];
@@ -212,7 +208,7 @@
                 if(save.uiPos && save.uiPos[id]) {
                     el.style.left = save.uiPos[id].left + 'px';
                     el.style.top = save.uiPos[id].top + 'px';
-                    el.style.bottom = 'auto'; // Отключаем стандартное позиционирование
+                    el.style.bottom = 'auto'; 
                     el.style.right = 'auto';
                 }
             });
@@ -243,7 +239,6 @@
             showMenu('settingsMenu');
         }
 
-        // Логика перетаскивания
         uiElements.forEach(id => {
             let el = document.getElementById(id);
             let isDragging = false;
@@ -335,7 +330,7 @@
         }
 
         // ==========================================
-        // 4. ЛОГИКА ИГРЫ (Боты, Бхоп, Прицел, Присяд)
+        // 4. ЛОГИКА ИГРЫ (С ИСПРАВЛЕННЫМ МЕНЮ)
         // ==========================================
         let gameActive = false, myHp = 100, myKills = 0, lastShootTime = 0;
         let bullets = [], bots = [];
@@ -353,13 +348,23 @@
         function joinGame() {
             initAudio();
             buildMap(document.getElementById('mapSelect').value);
+            
+            // Принудительно скрываем ВСЕ меню
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('shopMenu').style.display = 'none';
+            document.getElementById('settingsMenu').style.display = 'none';
+            
             document.getElementById('hud').style.display = 'block';
             document.getElementById('exitBtn').style.display = 'block';
+            
             showUI();
             gameActive = true;
             camera.position.set(0, 1.6, 10);
             myHp = 100; myKills = 0; currentSpeed = 10;
-            bots.forEach(b => scene.remove(b.model)); bots = [];
+            
+            bots.forEach(b => scene.remove(b.model)); 
+            bots = [];
             for(let i=0; i<4; i++) spawnBot();
         }
 
@@ -431,7 +436,7 @@
         }
 
         // ==========================================
-        // 5. УПРАВЛЕНИЕ (Обработка кнопок)
+        // 5. УПРАВЛЕНИЕ
         // ==========================================
         window.addEventListener('keydown', e => {
             keys[e.code] = true;
@@ -447,7 +452,6 @@
             if(e.code === 'ShiftLeft') { isAds = false; targetFov = 75; }
         });
 
-        // Джойстик
         const joy = document.getElementById('joystick');
         const knob = document.getElementById('joyKnob');
         let joyTouchId = null;
@@ -469,7 +473,6 @@
         }, {passive: false});
         joy.addEventListener('touchend', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); for (let i=0; i<e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joyTouchId) { joyTouchId = null; moveX = 0; moveY = 0; knob.style.transform = `translate(0px, 0px)`; } } }, {passive: false});
 
-        // Камера
         let lookTouchId = null, lastLookX = 0, lastLookY = 0;
         renderer.domElement.addEventListener('touchstart', (e) => {
             if(isEditingUI) return;
@@ -484,7 +487,7 @@
                 let t = e.changedTouches[i];
                 if (t.identifier === lookTouchId) {
                     e.preventDefault(); let dx = t.clientX - lastLookX; let dy = t.clientY - lastLookY;
-                    let sensMult = isAds ? 0.5 : 1.0; // Медленнее при прицеливании
+                    let sensMult = isAds ? 0.5 : 1.0;
                     yaw -= dx * 0.005 * sensitivity * sensMult; pitch -= dy * 0.005 * sensitivity * sensMult;
                     pitch = Math.max(-Math.PI/2+0.1, Math.min(Math.PI/2-0.1, pitch));
                     lastLookX = t.clientX; lastLookY = t.clientY;
@@ -493,7 +496,6 @@
         }, {passive: false});
         renderer.domElement.addEventListener('touchend', () => { lookTouchId = null; });
 
-        // ПК мышь
         document.addEventListener('mousemove', (e) => {
             if (document.pointerLockElement === renderer.domElement && !isEditingUI) {
                 let sensMult = isAds ? 0.5 : 1.0;
@@ -503,7 +505,6 @@
         });
         renderer.domElement.addEventListener('click', () => { if(!('ontouchstart' in window) && gameActive) renderer.domElement.requestPointerLock(); });
 
-        // Экшен-кнопки
         document.getElementById('btnShoot').addEventListener('touchstart', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); shoot(); }, {passive: false});
         window.addEventListener('mousedown', (e) => { if(e.button === 0 && !('ontouchstart' in window) && gameActive && !isEditingUI) shoot(); });
         
@@ -512,11 +513,9 @@
             if(onGround && gameActive) { velocityY = jumpForce; onGround = false; currentSpeed = Math.min(currentSpeed + 5, maxSpeed); }
         }, {passive: false});
 
-        // Кнопка Присесть (Удерживать)
         document.getElementById('btnCrouch').addEventListener('touchstart', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); isCrouching = true; targetHeight = 1.0; }, {passive: false});
         document.getElementById('btnCrouch').addEventListener('touchend', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); isCrouching = false; targetHeight = 1.6; }, {passive: false});
 
-        // Кнопка Прицел (Удерживать)
         document.getElementById('btnAds').addEventListener('touchstart', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); isAds = true; targetFov = 40; }, {passive: false});
         document.getElementById('btnAds').addEventListener('touchend', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); isAds = false; targetFov = 75; }, {passive: false});
 
@@ -533,14 +532,12 @@
             if (gameActive && !isEditingUI) {
                 camera.rotation.set(pitch, yaw, 0);
                 
-                // Плавное изменение FOV (Прицел)
                 if(Math.abs(camera.fov - targetFov) > 0.1) {
                     camera.fov += (targetFov - camera.fov) * 10 * delta;
                     camera.updateProjectionMatrix();
                     document.getElementById('crosshair').style.transform = `translate(-50%, -50%) scale(${isAds ? 0.5 : 1})`;
                 }
 
-                // Плавное изменение высоты (Присяд)
                 if(Math.abs(camera.position.y - targetHeight) > 0.05) {
                     camera.position.y += (targetHeight - camera.position.y) * 10 * delta;
                 }
@@ -561,7 +558,7 @@
                 
                 if(moveVec.length() > 0) {
                     moveVec.normalize();
-                    let speedMult = isCrouching ? 0.5 : 1.0; // Медленнее в присяде
+                    let speedMult = isCrouching ? 0.5 : 1.0;
                     camera.position.addScaledVector(moveVec, currentSpeed * speedMult * delta);
                     
                     if (onGround) {
@@ -573,7 +570,6 @@
                     }
                 }
 
-                // Гравитация
                 if(!onGround || velocityY > 0) {
                     camera.position.y += velocityY * delta;
                     velocityY += gravity * delta;
