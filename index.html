@@ -3,42 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Web 3D Shooter: Click & Play</title>
+    <title>Web 3D Shooter: Custom UI + ADS</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/trystero@0.21.0/dist/trystero-mqtt.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; }
         canvas { display: block; }
 
-        /* --- ОШИБКИ --- */
-        #errorOverlay { position: absolute; top: 0; left: 0; width: 100%; background: red; color: white; z-index: 9999; display: none; padding: 10px; font-size: 14px; font-weight: bold; }
-
         /* --- МЕНЮ --- */
-        #authScreen, #menu, #shopMenu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 200; }
-        #menu, #shopMenu { background: rgba(0,0,0,0.85); display: none; }
+        #authScreen, #menu, #shopMenu, #settingsMenu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 200; }
+        #menu, #shopMenu, #settingsMenu { background: rgba(0,0,0,0.9); display: none; }
         .input-box { padding: 12px; margin: 5px; font-size: 16px; border-radius: 5px; border: 1px solid #555; background: #222; color: white; width: 250px; text-align: center; }
         .btn { padding: 12px 20px; margin: 5px; font-size: 16px; border: none; border-radius: 5px; background: #ffcc00; color: black; font-weight: bold; cursor: pointer; width: 250px; }
         .btn-green { background: #00ff00; font-size: 20px; padding: 15px; }
         .btn-red { background: #ff4444; color: white; }
-        .btn-small { width: auto; padding: 10px 15px; font-size: 14px; }
         .shop-item { background: #333; padding: 10px 15px; margin: 5px; border-radius: 10px; width: 300px; display: flex; justify-content: space-between; align-items: center; }
 
         /* --- HUD --- */
         #hud { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); }
-        #stats { position: absolute; top: 20px; left: 20px; color: white; font-size: 14px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; }
-        #killfeed { position: absolute; top: 80px; right: 20px; color: white; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; font-size: 14px; text-align: right; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); transition: 0.1s; }
+        #stats { position: absolute; top: 20px; left: 20px; color: white; font-size: 14px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; line-height: 1.5;}
 
-        /* --- УПРАВЛЕНИЕ --- */
-        #joystick { display: none; position: absolute; bottom: 50px; left: 50px; width: 120px; height: 120px; background: rgba(255,255,255,0.2); border-radius: 50%; touch-action: none; z-index: 100; border: 2px solid rgba(255,255,255,0.3); }
+        /* --- UI ЭЛЕМЕНТЫ (Теперь перетаскиваемые) --- */
+        .ui-element { position: absolute; z-index: 100; touch-action: none; border-radius: 50%; display: none; text-align: center; font-weight: bold; color: white; border: 2px solid rgba(255,255,255,0.4); }
+        
+        #joystick { width: 120px; height: 120px; background: rgba(255,255,255,0.1); bottom: 50px; left: 50px; }
         #joyKnob { position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: rgba(255,255,255,0.6); border-radius: 50%; pointer-events: none; }
-        #btnShoot { display: none; position: absolute; bottom: 50px; right: 50px; width: 100px; height: 100px; background: rgba(255,0,0,0.6); border-radius: 50%; color: white; font-size: 20px; font-weight: bold; text-align: center; line-height: 100px; touch-action: none; z-index: 100; border: 2px solid #ff0000; }
-        #exitBtn { position: absolute; top: 20px; right: 20px; padding: 10px; background: red; color: white; border: none; border-radius: 5px; z-index: 200; display: none; }
+        
+        #btnShoot { width: 90px; height: 90px; background: rgba(255,0,0,0.5); border-color: #f00; line-height: 90px; bottom: 50px; right: 50px; font-size: 18px; }
+        #btnJump { width: 60px; height: 60px; background: rgba(0,150,255,0.5); border-color: #09f; line-height: 60px; bottom: 160px; right: 50px; font-size: 14px; }
+        #btnCrouch { width: 60px; height: 60px; background: rgba(255,150,0,0.5); border-color: #f90; line-height: 60px; bottom: 160px; right: 130px; font-size: 14px; }
+        #btnAds { width: 60px; height: 60px; background: rgba(0,255,150,0.5); border-color: #0f9; line-height: 60px; bottom: 50px; right: 160px; font-size: 14px; }
+        
+        #exitBtn { display: none; position: absolute; top: 20px; right: 20px; padding: 10px 20px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 5px; z-index: 100; font-weight: bold; pointer-events: auto; }
+        
+        /* Стили для режима редактирования */
+        .edit-mode { border: 2px dashed #fff !important; background: rgba(255,255,255,0.3) !important; box-shadow: 0 0 15px #fff; }
+        #editBar { display: none; position: absolute; top: 0; left: 0; width: 100%; background: #ffcc00; color: black; text-align: center; padding: 15px; font-weight: bold; z-index: 300; }
     </style>
 </head>
 <body>
-    <div id="errorOverlay"></div>
 
+    <!-- Экран редактирования интерфейса -->
+    <div id="editBar">
+        РЕЖИМ РЕДАКТИРОВАНИЯ: Перетаскивай кнопки пальцем
+        <button style="margin-left: 20px; padding: 5px 15px; font-weight: bold;" onclick="saveUI()">СОХРАНИТЬ</button>
+    </div>
+
+    <!-- Экраны -->
     <div id="authScreen">
         <h1 style="color:#ffcc00;">ВХОД</h1>
         <input type="text" id="authUser" class="input-box" placeholder="Никнейм">
@@ -47,54 +58,76 @@
     </div>
 
     <div id="menu">
-        <h1>3D SHOOTER</h1>
-        <p>Игрок: <span id="menuUser" style="color:#00ff00;"></span></p>
-        <p>Монеты: <span id="menuCoins">0</span> 🪙</p>
-        <button class="btn btn-green" onclick="joinGlobalGame()">В БОЙ (Онлайн)</button>
-        <button class="btn" onclick="openShop()">МАГАЗИН</button>
-        <div style="margin-top: 20px; display:flex; gap: 5px;">
-            <input type="text" id="promoInput" placeholder="Промокод" style="padding:10px; border-radius:5px; border:none; width: 150px;">
-            <button class="btn btn-small" style="background:#00ccff;" onclick="applyPromo()">ОК</button>
-        </div>
+        <h1>3D SHOOTER: PRO</h1>
+        <p>Игрок: <span id="menuUser" style="color:#00ff00; font-weight:bold;"></span> | Монеты: <span id="menuCoins">0</span> 🪙</p>
+        
+        <select id="mapSelect" class="input-box" style="width: 260px;">
+            <option value="dust2">Dust 2 (A-Site)</option>
+            <option value="mirage">Mirage (Palace)</option>
+        </select>
+
+        <button class="btn btn-green" onclick="joinGame()">В БОЙ</button>
+        <button class="btn" onclick="showMenu('shopMenu')">МАГАЗИН</button>
+        <button class="btn" onclick="showMenu('settingsMenu')">НАСТРОЙКИ</button>
     </div>
 
     <div id="shopMenu">
         <h1>МАГАЗИН</h1>
         <p>Монеты: <span id="shopCoins">0</span> 🪙</p>
-        <div class="shop-item">
-            <span>Винтовка</span>
-            <button class="btn btn-small" onclick="buyWeapon('rifle', 100)">100</button>
-        </div>
-        <div class="shop-item">
-            <span>Снайперка</span>
-            <button class="btn btn-small" onclick="buyWeapon('sniper', 300)">300</button>
-        </div>
-        <button class="btn btn-red" style="margin-top:20px;" onclick="closeShop()">НАЗАД</button>
+        <div class="shop-item"><span>Винтовка</span><button class="btn" style="width:auto; padding:5px;" onclick="buyWeapon('rifle', 100)">100</button></div>
+        <div class="shop-item"><span>Снайперка</span><button class="btn" style="width:auto; padding:5px;" onclick="buyWeapon('sniper', 300)">300</button></div>
+        <button class="btn btn-red" style="margin-top:20px;" onclick="showMenu('menu')">НАЗАД</button>
     </div>
 
+    <div id="settingsMenu">
+        <h1>НАСТРОЙКИ</h1>
+        <p>Чувствительность: <span id="sensVal">1.0</span></p>
+        <input type="range" id="sensSlider" min="0.2" max="3.0" step="0.1" value="1.0" style="width:200px;">
+        <p style="margin-top:20px;">Расположение кнопок:</p>
+        <button class="btn" onclick="startEditUI()">ИЗМЕНИТЬ ИНТЕРФЕЙС</button>
+        <button class="btn btn-red" style="margin-top:20px;" onclick="saveSettings()">СОХРАНИТЬ</button>
+    </div>
+
+    <!-- HUD -->
     <div id="hud">
         <div id="crosshair"></div>
-        <div id="stats">Загрузка...</div>
-        <div id="killfeed"></div>
-        <button id="exitBtn" onclick="location.reload()">ВЫЙТИ</button>
+        <button id="exitBtn" onclick="leaveGame()">В МЕНЮ</button>
+        <div id="stats">
+            HP: <span id="hudHp">100</span><br>
+            Скорость: <span id="hudSpeed">10</span><br>
+            Убийств: <span id="hudKills">0</span>
+        </div>
     </div>
 
-    <div id="joystick"><div id="joyKnob"></div></div>
-    <div id="btnShoot">ОГОНЬ</div>
+    <!-- UI Элементы (с классами для перетаскивания) -->
+    <div id="joystick" class="ui-element"><div id="joyKnob"></div></div>
+    <div id="btnShoot" class="ui-element">ОГОНЬ</div>
+    <div id="btnJump" class="ui-element">ПРЫЖОК</div>
+    <div id="btnCrouch" class="ui-element">ПРИСЕСТЬ</div>
+    <div id="btnAds" class="ui-element">ПРИЦЕЛ</div>
 
     <script>
-        // Вывод ошибок на экран
-        window.addEventListener('error', function(e) {
-            let err = document.getElementById('errorOverlay');
-            err.style.display = 'block';
-            err.innerText = "ОШИБКА: " + e.message;
-        });
+        // ==========================================
+        // 0. АУДИО
+        // ==========================================
+        let audioCtx = null;
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        function playStepSound() {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(100 + Math.random()*20, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
 
         // ==========================================
-        // 1. АККАУНТЫ
+        // 1. АККАУНТЫ И НАСТРОЙКИ
         // ==========================================
         let currentUser = null;
-        let save = { coins: 0, weapons: ["pistol"], activeWeapon: "pistol", usedPromos: [] };
+        let save = { coins: 0, weapons: ["pistol"], activeWeapon: "pistol", usedPromos: [], sensitivity: 1.0, uiPos: {} };
+        let sensitivity = 1.0;
+        
         const WEAPONS = {
             pistol: { name: "Пистолет", dmg: 20, rate: 300 },
             rifle: { name: "Винтовка", dmg: 35, rate: 150 },
@@ -109,29 +142,49 @@
             if (savedPass) { if (savedPass !== p) return alert("Неверный пароль!"); } 
             else { localStorage.setItem('fps_pass_' + u, p); }
             currentUser = u; localStorage.setItem('fps_active_user', u);
-            loadSave(); showMenu();
+            loadSave(); showMenu('menu');
         }
 
         function loadSave() {
             let s = localStorage.getItem('fps_save_' + currentUser);
-            if (s) { save = JSON.parse(s); if(!save.usedPromos) save.usedPromos = []; } 
-            else { save = { coins: 0, weapons: ["pistol"], activeWeapon: "pistol", usedPromos: [] }; saveData(); }
+            if (s) { 
+                save = JSON.parse(s); 
+                if(!save.usedPromos) save.usedPromos = []; 
+                if(!save.sensitivity) save.sensitivity = 1.0;
+                if(!save.uiPos) save.uiPos = {};
+            } else { 
+                save = { coins: 0, weapons: ["pistol"], activeWeapon: "pistol", usedPromos: [], sensitivity: 1.0, uiPos: {} }; 
+                saveData(); 
+            }
+            sensitivity = save.sensitivity;
+            document.getElementById('sensSlider').value = sensitivity;
+            document.getElementById('sensVal').innerText = sensitivity;
             updateCoins();
         }
 
         function saveData() { if(currentUser) localStorage.setItem('fps_save_' + currentUser, JSON.stringify(save)); }
-        function showMenu() { document.getElementById('authScreen').style.display = 'none'; document.getElementById('menu').style.display = 'flex'; document.getElementById('menuUser').innerText = currentUser; }
         function updateCoins() { document.getElementById('menuCoins').innerText = save.coins; document.getElementById('shopCoins').innerText = save.coins; }
-        window.onload = () => { let a = localStorage.getItem('fps_active_user'); if(a) { currentUser = a; loadSave(); showMenu(); } };
+        
+        window.onload = () => { let a = localStorage.getItem('fps_active_user'); if(a) { currentUser = a; loadSave(); showMenu('menu'); } };
 
-        function applyPromo() {
-            if (document.getElementById('promoInput').value.trim() === "Петушара2026") {
-                if (save.usedPromos.includes("Петушара2026")) return alert("Уже активирован!");
-                save.coins += 1000; save.usedPromos.push("Петушара2026"); saveData(); updateCoins(); alert("+1000 монет!");
-            } else alert("Неверный код.");
+        document.getElementById('sensSlider').addEventListener('input', function() {
+            sensitivity = parseFloat(this.value); document.getElementById('sensVal').innerText = sensitivity.toFixed(1);
+        });
+
+        function saveSettings() { save.sensitivity = sensitivity; saveData(); showMenu('menu'); }
+
+        function showMenu(menuId) {
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('shopMenu').style.display = 'none';
+            document.getElementById('settingsMenu').style.display = 'none';
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('editBar').style.display = 'none';
+            hideUI();
+            document.getElementById(menuId).style.display = 'flex';
+            if(menuId === 'menu') document.getElementById('menuUser').innerText = currentUser;
         }
-        function openShop() { document.getElementById('menu').style.display = 'none'; document.getElementById('shopMenu').style.display = 'flex'; }
-        function closeShop() { document.getElementById('shopMenu').style.display = 'none'; document.getElementById('menu').style.display = 'flex'; }
+
         function buyWeapon(w, price) {
             if (save.coins >= price && !save.weapons.includes(w)) {
                 save.coins -= price; save.weapons.push(w); save.activeWeapon = w;
@@ -140,11 +193,101 @@
         }
 
         // ==========================================
-        // 2. 3D НАСТРОЙКА
+        // 2. РЕДАКТОР ИНТЕРФЕЙСА (Перетаскивание кнопок)
+        // ==========================================
+        let isEditingUI = false;
+        const uiElements = ['joystick', 'btnShoot', 'btnJump', 'btnCrouch', 'btnAds'];
+
+        function hideUI() { uiElements.forEach(id => document.getElementById(id).style.display = 'none'); }
+        function showUI() { 
+            if('ontouchstart' in window) {
+                uiElements.forEach(id => document.getElementById(id).style.display = 'block');
+                applySavedPositions();
+            }
+        }
+
+        function applySavedPositions() {
+            uiElements.forEach(id => {
+                let el = document.getElementById(id);
+                if(save.uiPos && save.uiPos[id]) {
+                    el.style.left = save.uiPos[id].left + 'px';
+                    el.style.top = save.uiPos[id].top + 'px';
+                    el.style.bottom = 'auto'; // Отключаем стандартное позиционирование
+                    el.style.right = 'auto';
+                }
+            });
+        }
+
+        function startEditUI() {
+            document.getElementById('settingsMenu').style.display = 'none';
+            document.getElementById('editBar').style.display = 'block';
+            document.getElementById('hud').style.display = 'block';
+            isEditingUI = true;
+            showUI();
+            
+            uiElements.forEach(id => {
+                let el = document.getElementById(id);
+                el.classList.add('edit-mode');
+                el.style.display = 'block';
+                el.style.pointerEvents = 'auto'; 
+            });
+            applySavedPositions();
+        }
+
+        function saveUI() {
+            isEditingUI = false;
+            document.getElementById('editBar').style.display = 'none';
+            document.getElementById('hud').style.display = 'none';
+            uiElements.forEach(id => document.getElementById(id).classList.remove('edit-mode'));
+            saveData();
+            showMenu('settingsMenu');
+        }
+
+        // Логика перетаскивания
+        uiElements.forEach(id => {
+            let el = document.getElementById(id);
+            let isDragging = false;
+            let startX, startY, startLeft, startTop;
+
+            el.addEventListener('touchstart', (e) => {
+                if (!isEditingUI) return;
+                e.preventDefault(); e.stopPropagation();
+                isDragging = true;
+                let touch = e.touches[0];
+                startX = touch.clientX; startY = touch.clientY;
+                let rect = el.getBoundingClientRect();
+                startLeft = rect.left; startTop = rect.top;
+            }, {passive: false});
+
+            el.addEventListener('touchmove', (e) => {
+                if (!isEditingUI || !isDragging) return;
+                e.preventDefault(); e.stopPropagation();
+                let touch = e.touches[0];
+                let dx = touch.clientX - startX;
+                let dy = touch.clientY - startY;
+                
+                let newLeft = startLeft + dx;
+                let newTop = startTop + dy;
+                
+                el.style.left = newLeft + 'px';
+                el.style.top = newTop + 'px';
+                
+                save.uiPos[id] = { left: newLeft, top: newTop };
+            }, {passive: false});
+
+            el.addEventListener('touchend', (e) => {
+                if (!isEditingUI) return;
+                e.preventDefault(); e.stopPropagation();
+                isDragging = false;
+            }, {passive: false});
+        });
+
+        // ==========================================
+        // 3. 3D НАСТРОЙКА
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
-        scene.fog = new THREE.Fog(0x87CEEB, 20, 80);
+        scene.fog = new THREE.Fog(0x87CEEB, 30, 100);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.y = 1.6;
         camera.rotation.order = 'YXZ';
@@ -153,121 +296,107 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(10, 20, 10);
-        scene.add(light);
+        const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(10, 30, 10); scene.add(light);
         scene.add(new THREE.AmbientLight(0x606060));
 
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshLambertMaterial({ color: 0x555555 }));
-        floor.rotation.x = -Math.PI / 2;
-        scene.add(floor);
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({ color: 0x555555 }));
+        floor.rotation.x = -Math.PI / 2; scene.add(floor);
 
-        const walls = [];
-        const wallMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-        for (let i = 0; i < 15; i++) {
-            const box = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 4), wallMat);
-            box.position.set((Math.random() - 0.5) * 60, 2.5, (Math.random() - 0.5) * 60);
-            if(Math.hypot(box.position.x, box.position.z) > 10) { scene.add(box); walls.push(box); }
+        let walls = [];
+        function buildMap(mapName) {
+            walls.forEach(w => scene.remove(w)); walls = [];
+            const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+            const wallMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const crateMat = new THREE.MeshLambertMaterial({ color: 0xD2B48C });
+
+            if (mapName === 'dust2') {
+                let w1 = new THREE.Mesh(boxGeo, wallMat); w1.scale.set(20, 5, 2); w1.position.set(-10, 2.5, -20); scene.add(w1); walls.push(w1);
+                let c1 = new THREE.Mesh(boxGeo, crateMat); c1.scale.set(3, 3, 3); c1.position.set(-5, 1.5, -10); scene.add(c1); walls.push(c1);
+            } else if (mapName === 'mirage') {
+                let w1 = new THREE.Mesh(boxGeo, wallMat); w1.scale.set(2, 6, 30); w1.position.set(-15, 3, 0); scene.add(w1); walls.push(w1);
+                let c1 = new THREE.Mesh(boxGeo, crateMat); c1.scale.set(2, 8, 2); c1.position.set(0, 4, 0); scene.add(c1); walls.push(c1);
+            }
         }
 
         function createStickman(color, nameText) {
             const group = new THREE.Group();
-            const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshLambertMaterial({ color: color }));
-            head.position.y = 1.7; group.add(head);
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({ color: color }));
-            body.position.y = 1.1; group.add(body);
-            const arm1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.1), new THREE.MeshLambertMaterial({ color: color }));
-            arm1.position.set(-0.25, 1.2, 0); group.add(arm1);
-            const arm2 = arm1.clone(); arm2.position.x = 0.25; group.add(arm2);
-            const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 0.15), new THREE.MeshLambertMaterial({ color: 0x222222 }));
-            leg1.position.set(-0.1, 0.35, 0); group.add(leg1);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshLambertMaterial({ color: color })); head.position.y = 1.7; group.add(head);
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({ color: color })); body.position.y = 1.1; group.add(body);
+            const arm1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.1), new THREE.MeshLambertMaterial({ color: color })); arm1.position.set(-0.25, 1.2, 0); group.add(arm1);
+            const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 0.15), new THREE.MeshLambertMaterial({ color: 0x222222 })); leg1.position.set(-0.1, 0.35, 0); group.add(leg1);
             const leg2 = leg1.clone(); leg2.position.x = 0.1; group.add(leg2);
-            
             if(nameText) {
                 const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 64;
-                const ctx = canvas.getContext('2d');
-                ctx.font = "Bold 30px Arial"; ctx.fillStyle = "lime"; ctx.textAlign = "center";
-                ctx.fillText(nameText, 128, 40);
-                const texture = new THREE.CanvasTexture(canvas);
-                const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
-                const sprite = new THREE.Sprite(spriteMat);
-                sprite.position.y = 2.3; sprite.scale.set(4, 1, 1); group.add(sprite);
+                const ctx = canvas.getContext('2d'); ctx.font = "Bold 30px Arial"; ctx.fillStyle = "red"; ctx.textAlign = "center"; ctx.fillText(nameText, 128, 40);
+                const spriteMat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false });
+                const sprite = new THREE.Sprite(spriteMat); sprite.position.y = 2.3; sprite.scale.set(4, 1, 1); group.add(sprite);
             }
             return group;
         }
 
         // ==========================================
-        // 3. МУЛЬТИПЛЕЕР (Trystero)
+        // 4. ЛОГИКА ИГРЫ (Боты, Бхоп, Прицел, Присяд)
         // ==========================================
-        let room = null, gameActive = false, myId = Math.random().toString(36).substr(2, 9);
-        let myHp = 100, myKills = 0, lastShootTime = 0;
-        let players = {}, bullets = [];
-        let sendMove, sendShoot, sendHit;
+        let gameActive = false, myHp = 100, myKills = 0, lastShootTime = 0;
+        let bullets = [], bots = [];
+        let velocityY = 0, gravity = -25, jumpForce = 9, onGround = true;
+        let currentSpeed = 10, maxSpeed = 100;
+        
+        let isCrouching = false;
+        let isAds = false;
+        let targetFov = 75;
+        let targetHeight = 1.6;
+        
+        let keys = {}, moveX = 0, moveY = 0, yaw = 0, pitch = 0;
+        let lastStepTime = 0;
 
-        function joinGlobalGame() {
-            document.getElementById('menu').style.display = 'none';
+        function joinGame() {
+            initAudio();
+            buildMap(document.getElementById('mapSelect').value);
             document.getElementById('hud').style.display = 'block';
             document.getElementById('exitBtn').style.display = 'block';
-            document.getElementById('joystick').style.display = 'block';
-            document.getElementById('btnShoot').style.display = 'block';
-            document.getElementById('stats').innerText = "Загрузка...";
-            
+            showUI();
             gameActive = true;
-            camera.position.set(0, 1.6, 0);
-
-            // Пытаемся подключиться, но даже если сеть упадет, игра запустится локально
-            try {
-                const config = { appId: 'artem-web-shooter-2026' };
-                room = Trystero.joinRoom(config, 'GlobalLobby');
-                
-                const actions = {
-                    move: room.makeAction('move'),
-                    shoot: room.makeAction('shoot'),
-                    hit: room.makeAction('hit')
-                };
-                sendMove = actions.move[0]; sendShoot = actions.shoot[0]; sendHit = actions.hit[0];
-
-                room.onPeerJoin(peerId => {
-                    players[peerId] = { model: createStickman(0xffaa00, "Player"), hp: 100, x: 0, z: 0, rotY: 0 };
-                    scene.add(players[peerId].model);
-                    addKillFeed(`Игрок ${peerId.substr(0,4)} зашел!`);
-                });
-
-                room.onPeerLeave(peerId => {
-                    if(players[peerId]) { scene.remove(players[peerId].model); delete players[peerId]; }
-                    addKillFeed(`Игрок отключился.`);
-                });
-
-                actions.move[1]((data, peerId) => {
-                    if(players[peerId]) {
-                        players[peerId].x = data.x; players[peerId].z = data.z; players[peerId].rotY = data.rotY;
-                        players[peerId].model.position.set(data.x, 0, data.z);
-                        players[peerId].model.rotation.y = data.rotY;
-                    }
-                });
-
-                actions.shoot[1]((data, peerId) => spawnBullet(data.x, data.z, data.rotY, data.dmg, peerId));
-                actions.hit[1]((data, peerId) => takeDamage(data.dmg));
-                
-            } catch (e) {
-                console.log("Сеть не работает: ", e);
-                addKillFeed("Одиночный режим");
-            }
+            camera.position.set(0, 1.6, 10);
+            myHp = 100; myKills = 0; currentSpeed = 10;
+            bots.forEach(b => scene.remove(b.model)); bots = [];
+            for(let i=0; i<4; i++) spawnBot();
         }
 
-        function addKillFeed(text) {
-            const feed = document.getElementById('killfeed');
-            const msg = document.createElement('div');
-            msg.innerText = text;
-            feed.appendChild(msg);
-            setTimeout(() => msg.remove(), 3000);
+        function leaveGame() {
+            gameActive = false;
+            document.exitPointerLock();
+            save.coins += 10; saveData(); updateCoins();
+            showMenu('menu');
         }
 
-        function spawnBullet(x, z, rotY, dmg, owner) {
-            const bMesh = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
-            bMesh.position.set(x, 1.5, z);
-            scene.add(bMesh);
-            bullets.push({ mesh: bMesh, vx: Math.sin(rotY) * 50, vz: Math.cos(rotY) * 50, owner: owner, dmg: dmg, life: 2.0 });
+        function spawnBot() {
+            const model = createStickman(0xffaa00, "BOT");
+            model.position.set((Math.random() - 0.5) * 40, 0, (Math.random() - 0.5) * 40);
+            scene.add(model);
+            bots.push({ model: model, hp: 100, lastShoot: 0 });
+        }
+
+        function updateBots(delta) {
+            bots.forEach(bot => {
+                let dist = Math.hypot(camera.position.x - bot.model.position.x, camera.position.z - bot.model.position.z);
+                let angle = Math.atan2(camera.position.x - bot.model.position.x, camera.position.z - bot.model.position.z);
+                bot.model.rotation.y = angle;
+                if (dist > 5) { bot.model.position.x += Math.sin(angle) * 4 * delta; bot.model.position.z += Math.cos(angle) * 4 * delta; }
+                if (dist < 40 && performance.now() - bot.lastShoot > 1200) {
+                    bot.lastShoot = performance.now();
+                    spawnBullet(bot.model.position.x, 1.5, bot.model.position.z, angle, 10, "bot");
+                }
+            });
+        }
+
+        function spawnBullet(x, y, z, rotY, dmg, owner) {
+            const bGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            const bMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+            const bMesh = new THREE.Mesh(bGeo, bMat);
+            bMesh.position.set(x, y, z); scene.add(bMesh);
+            const pointLight = new THREE.PointLight(0x00ffff, 1, 5); pointLight.position.set(x, y, z); bMesh.add(pointLight);
+            bullets.push({ mesh: bMesh, vx: Math.sin(rotY) * 60, vz: Math.cos(rotY) * 60, owner: owner, dmg: dmg, life: 2.0 });
         }
 
         function shoot() {
@@ -276,153 +405,146 @@
             let weapon = WEAPONS[save.activeWeapon];
             if (now - lastShootTime > weapon.rate) {
                 lastShootTime = now;
-                spawnBullet(camera.position.x, camera.position.z, yaw, weapon.dmg, myId);
-                if(sendShoot) sendShoot({ x: camera.position.x, z: camera.position.z, rotY: yaw, dmg: weapon.dmg });
-            }
-        }
-
-        function takeDamage(dmg) {
-            myHp -= dmg;
-            if (myHp <= 0) {
-                myHp = 100;
-                camera.position.set(0, 1.6, 0);
-                addKillFeed("Тебя убили!");
+                spawnBullet(camera.position.x, camera.position.y, camera.position.z, yaw, weapon.dmg, "player");
             }
         }
 
         function updateBullets(delta) {
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i];
-                b.mesh.position.x += b.vx * delta;
-                b.mesh.position.z += b.vz * delta;
-                b.life -= delta;
-                let hit = false;
-
-                for (let id in players) {
-                    if (id !== b.owner) {
-                        let p = players[id];
-                        if (Math.hypot(b.mesh.position.x - p.x, b.mesh.position.z - p.z) < 1.2) {
-                            hit = true;
-                            if (b.owner === myId && sendHit) {
-                                sendHit({ dmg: b.dmg }, id);
-                                myKills++;
-                                addKillFeed(`Ты убил ${id.substr(0,4)}!`);
-                            }
-                        }
+                b.mesh.position.x += b.vx * delta; b.mesh.position.z += b.vz * delta; b.life -= delta; let hit = false;
+                if (b.owner === "bot") {
+                    if (Math.hypot(b.mesh.position.x - camera.position.x, b.mesh.position.z - camera.position.z) < 1.0) {
+                        hit = true; myHp -= b.dmg; if(myHp <= 0) { myHp = 100; camera.position.set(0,1.6,0); }
                     }
+                } else if (b.owner === "player") {
+                    bots.forEach((bot, index) => {
+                        if (Math.hypot(b.mesh.position.x - bot.model.position.x, b.mesh.position.z - bot.model.position.z) < 1.2) {
+                            hit = true; bot.hp -= b.dmg;
+                            if (bot.hp <= 0) { scene.remove(bot.model); bots.splice(index, 1); myKills++; setTimeout(spawnBot, 2000); }
+                        }
+                    });
                 }
-
-                walls.forEach(w => { if (Math.abs(b.mesh.position.x - w.position.x) < 2 && Math.abs(b.mesh.position.z - w.position.z) < 2) hit = true; });
+                walls.forEach(w => { if (Math.abs(b.mesh.position.x - w.position.x) < w.scale.x/2 && Math.abs(b.mesh.position.z - w.position.z) < w.scale.z/2) hit = true; });
                 if (hit || b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
             }
         }
 
         // ==========================================
-        // 4. УПРАВЛЕНИЕ (Touch Events)
+        // 5. УПРАВЛЕНИЕ (Обработка кнопок)
         // ==========================================
-        let moveX = 0, moveY = 0, yaw = 0, pitch = 0;
-        let keys = {};
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if(e.code === 'Space' && onGround && gameActive && !isEditingUI) {
+                velocityY = jumpForce; onGround = false; currentSpeed = Math.min(currentSpeed + 5, maxSpeed);
+            }
+            if(e.code === 'KeyC' && gameActive) { isCrouching = true; targetHeight = 1.0; }
+            if(e.code === 'ShiftLeft' && gameActive) { isAds = true; targetFov = 40; }
+        });
+        window.addEventListener('keyup', e => {
+            keys[e.code] = false;
+            if(e.code === 'KeyC') { isCrouching = false; targetHeight = 1.6; }
+            if(e.code === 'ShiftLeft') { isAds = false; targetFov = 75; }
+        });
 
-        // --- ДЖОЙСТИК ---
+        // Джойстик
         const joy = document.getElementById('joystick');
         const knob = document.getElementById('joyKnob');
         let joyTouchId = null;
-
-        joy.addEventListener('touchstart', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            joyTouchId = e.changedTouches[0].identifier;
-        }, {passive: false});
-
+        joy.addEventListener('touchstart', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); joyTouchId = e.changedTouches[0].identifier; }, {passive: false});
         joy.addEventListener('touchmove', (e) => {
-            e.preventDefault(); e.stopPropagation();
+            if(isEditingUI) return; e.preventDefault(); e.stopPropagation();
             for (let i=0; i<e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
                 if (t.identifier === joyTouchId) {
                     let rect = joy.getBoundingClientRect();
                     let dx = t.clientX - (rect.left + rect.width/2);
                     let dy = t.clientY - (rect.top + rect.height/2);
-                    let dist = Math.hypot(dx, dy);
-                    let maxDist = 60;
+                    let dist = Math.hypot(dx, dy); let maxDist = 60;
                     if (dist > maxDist) { dx = (dx/dist)*maxDist; dy = (dy/dist)*maxDist; }
                     knob.style.transform = `translate(${dx}px, ${dy}px)`;
                     moveX = dx / maxDist; moveY = dy / maxDist;
                 }
             }
         }, {passive: false});
+        joy.addEventListener('touchend', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); for (let i=0; i<e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joyTouchId) { joyTouchId = null; moveX = 0; moveY = 0; knob.style.transform = `translate(0px, 0px)`; } } }, {passive: false});
 
-        joy.addEventListener('touchend', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            for (let i=0; i<e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === joyTouchId) {
-                    joyTouchId = null; moveX = 0; moveY = 0;
-                    knob.style.transform = `translate(0px, 0px)`;
-                }
-            }
-        }, {passive: false});
-
-        // --- КАМЕРА ---
+        // Камера
         let lookTouchId = null, lastLookX = 0, lastLookY = 0;
-
         renderer.domElement.addEventListener('touchstart', (e) => {
+            if(isEditingUI) return;
             for (let i=0; i<e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
-                if (t.clientX > window.innerWidth / 3) {
-                    lookTouchId = t.identifier;
-                    lastLookX = t.clientX; lastLookY = t.clientY;
-                }
+                if (t.clientX > window.innerWidth / 3) { lookTouchId = t.identifier; lastLookX = t.clientX; lastLookY = t.clientY; }
             }
         }, {passive: false});
-
         renderer.domElement.addEventListener('touchmove', (e) => {
+            if(isEditingUI) return;
             for (let i=0; i<e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
                 if (t.identifier === lookTouchId) {
-                    e.preventDefault();
-                    let dx = t.clientX - lastLookX;
-                    let dy = t.clientY - lastLookY;
-                    yaw -= dx * 0.005; pitch -= dy * 0.005;
+                    e.preventDefault(); let dx = t.clientX - lastLookX; let dy = t.clientY - lastLookY;
+                    let sensMult = isAds ? 0.5 : 1.0; // Медленнее при прицеливании
+                    yaw -= dx * 0.005 * sensitivity * sensMult; pitch -= dy * 0.005 * sensitivity * sensMult;
                     pitch = Math.max(-Math.PI/2+0.1, Math.min(Math.PI/2-0.1, pitch));
                     lastLookX = t.clientX; lastLookY = t.clientY;
                 }
             }
         }, {passive: false});
+        renderer.domElement.addEventListener('touchend', () => { lookTouchId = null; });
 
-        renderer.domElement.addEventListener('touchend', (e) => {
-            for (let i=0; i<e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === lookTouchId) lookTouchId = null;
-            }
-        });
-
-        // --- СТРЕЛЬБА ---
-        const btnShoot = document.getElementById('btnShoot');
-        btnShoot.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); shoot(); }, {passive: false});
-        window.addEventListener('mousedown', (e) => { if(e.button === 0 && !('ontouchstart' in window)) shoot(); });
-
+        // ПК мышь
         document.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement === renderer.domElement) {
-                yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002;
+            if (document.pointerLockElement === renderer.domElement && !isEditingUI) {
+                let sensMult = isAds ? 0.5 : 1.0;
+                yaw -= e.movementX * 0.002 * sensitivity * sensMult; pitch -= e.movementY * 0.002 * sensitivity * sensMult;
                 pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, pitch));
             }
         });
-        renderer.domElement.addEventListener('click', () => { if(!('ontouchstart' in window)) renderer.domElement.requestPointerLock(); });
+        renderer.domElement.addEventListener('click', () => { if(!('ontouchstart' in window) && gameActive) renderer.domElement.requestPointerLock(); });
+
+        // Экшен-кнопки
+        document.getElementById('btnShoot').addEventListener('touchstart', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); shoot(); }, {passive: false});
+        window.addEventListener('mousedown', (e) => { if(e.button === 0 && !('ontouchstart' in window) && gameActive && !isEditingUI) shoot(); });
+        
+        document.getElementById('btnJump').addEventListener('touchstart', (e) => {
+            if(isEditingUI) return; e.preventDefault(); e.stopPropagation();
+            if(onGround && gameActive) { velocityY = jumpForce; onGround = false; currentSpeed = Math.min(currentSpeed + 5, maxSpeed); }
+        }, {passive: false});
+
+        // Кнопка Присесть (Удерживать)
+        document.getElementById('btnCrouch').addEventListener('touchstart', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); isCrouching = true; targetHeight = 1.0; }, {passive: false});
+        document.getElementById('btnCrouch').addEventListener('touchend', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); isCrouching = false; targetHeight = 1.6; }, {passive: false});
+
+        // Кнопка Прицел (Удерживать)
+        document.getElementById('btnAds').addEventListener('touchstart', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); isAds = true; targetFov = 40; }, {passive: false});
+        document.getElementById('btnAds').addEventListener('touchend', (e) => { if(isEditingUI) return; e.preventDefault(); e.stopPropagation(); isAds = false; targetFov = 75; }, {passive: false});
 
         // ==========================================
-        // 5. ГЛАВНЫЙ ЦИКЛ
+        // 6. ГЛАВНЫЙ ЦИКЛ
         // ==========================================
         let lastTime = performance.now();
-        let sendTimer = 0;
 
         function animate() {
             requestAnimationFrame(animate);
             let delta = (performance.now() - lastTime) / 1000;
             lastTime = performance.now();
 
-            if (gameActive) {
+            if (gameActive && !isEditingUI) {
                 camera.rotation.set(pitch, yaw, 0);
                 
-                let speed = 15 * delta; // Увеличил скорость
+                // Плавное изменение FOV (Прицел)
+                if(Math.abs(camera.fov - targetFov) > 0.1) {
+                    camera.fov += (targetFov - camera.fov) * 10 * delta;
+                    camera.updateProjectionMatrix();
+                    document.getElementById('crosshair').style.transform = `translate(-50%, -50%) scale(${isAds ? 0.5 : 1})`;
+                }
+
+                // Плавное изменение высоты (Присяд)
+                if(Math.abs(camera.position.y - targetHeight) > 0.05) {
+                    camera.position.y += (targetHeight - camera.position.y) * 10 * delta;
+                }
+
                 let forward = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
                 let right = new THREE.Vector3(1, 0, 0).applyEuler(camera.rotation);
                 
@@ -431,23 +553,46 @@
                 if(keys['KeyS'] || keys['ArrowDown']) fwdInput -= 1;
                 if(keys['KeyD'] || keys['ArrowRight']) rightInput += 1;
                 if(keys['KeyA'] || keys['ArrowLeft']) rightInput -= 1;
-                
                 fwdInput -= moveY; rightInput += moveX;
-
-                camera.position.addScaledVector(forward, fwdInput * speed);
-                camera.position.addScaledVector(right, rightInput * speed);
-                camera.position.y = 1.6;
-
-                updateBullets(delta);
-
-                sendTimer += delta;
-                if (sendTimer > 0.1 && sendMove) {
-                    sendMove({ x: camera.position.x, z: camera.position.z, rotY: yaw });
-                    sendTimer = 0;
+                
+                let moveVec = new THREE.Vector3();
+                moveVec.addScaledVector(forward, fwdInput);
+                moveVec.addScaledVector(right, rightInput);
+                
+                if(moveVec.length() > 0) {
+                    moveVec.normalize();
+                    let speedMult = isCrouching ? 0.5 : 1.0; // Медленнее в присяде
+                    camera.position.addScaledVector(moveVec, currentSpeed * speedMult * delta);
+                    
+                    if (onGround) {
+                        currentSpeed = Math.max(10, currentSpeed - 30 * delta);
+                    }
+                    
+                    if (onGround && performance.now() - lastStepTime > 400 - (currentSpeed*2)) {
+                        playStepSound(); lastStepTime = performance.now();
+                    }
                 }
 
-                // Выводим отладочную инфу (чтобы понять, двигаемся мы или нет)
-                document.getElementById('stats').innerHTML = `X:${moveX.toFixed(1)} Y:${moveY.toFixed(1)} | Pos:${camera.position.x.toFixed(1)}, ${camera.position.z.toFixed(1)} | Убийств: ${myKills}`;
+                // Гравитация
+                if(!onGround || velocityY > 0) {
+                    camera.position.y += velocityY * delta;
+                    velocityY += gravity * delta;
+                }
+
+                if (camera.position.y <= targetHeight) {
+                    camera.position.y = targetHeight;
+                    velocityY = 0; onGround = true;
+                } else { onGround = false; }
+
+                camera.position.x = Math.max(-50, Math.min(50, camera.position.x));
+                camera.position.z = Math.max(-50, Math.min(50, camera.position.z));
+
+                updateBots(delta);
+                updateBullets(delta);
+
+                document.getElementById('hudHp').innerText = myHp;
+                document.getElementById('hudKills').innerText = myKills;
+                document.getElementById('hudSpeed').innerText = Math.round(currentSpeed);
             }
             renderer.render(scene, camera);
         }
