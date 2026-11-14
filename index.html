@@ -6,8 +6,8 @@
     <title>Web 3D Shooter: ARENA</title>
     <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Trystero для онлайн-режима -->
-    <script src="https://cdn.jsdelivr.net/npm/trystero@0.21.0/dist/trystero-mqtt.min.js"></script>
+    <!-- Trystero (Торрент-трекеры для обхода блокировок) -->
+    <script src="https://cdn.jsdelivr.net/npm/trystero@0.21.0/dist/trystero-torrent.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -930,7 +930,7 @@
                 p.mesh.position.x += p.vx * delta;
                 p.mesh.position.y += p.vy * delta;
                 p.mesh.position.z += p.vz * delta;
-                p.vy -= 15 * delta; // Гравитация для партиклов
+                p.vy -= 15 * delta;
                 p.life -= delta;
                 if(p.life <= 0) {
                     scene.remove(p.mesh);
@@ -967,23 +967,19 @@
             const crateColor = 0x8B5A2B;
             const neonColor = 0x00ffcc;
 
-            // Внешние стены (периметр)
             addWall(0, 5, -100, 200, 10, 4, wallColor);
             addWall(0, 5, 100, 200, 10, 4, wallColor);
             addWall(-100, 5, 0, 4, 10, 200, wallColor);
             addWall(100, 5, 0, 4, 10, 200, wallColor);
+            addWall(0, 3, 0, 30, 6, 30, wallColor);
+            addWall(0, 7, 0, 20, 2, 20, neonColor);
 
-            // Центральная структура
-            addWall(0, 3, 0, 30, 6, 30, wallColor); // Центральный блок
-            addWall(0, 7, 0, 20, 2, 20, neonColor); // Неоновый верх
-
-            // Укрытия (Кубы и стены)
             for(let i = 0; i < 40; i++) {
                 let isCrate = Math.random() > 0.3;
                 let x = (Math.random() - 0.5) * 160;
                 let z = (Math.random() - 0.5) * 160;
                 
-                if (Math.hypot(x, z) < 25) continue; // Не спавним в центре
+                if (Math.hypot(x, z) < 25) continue;
 
                 if (isCrate) {
                     let size = 3 + Math.random() * 4;
@@ -998,7 +994,6 @@
                 }
             }
 
-            // Неоновые колонны по углам
             addWall(-80, 6, -80, 4, 12, 4, neonColor);
             addWall(80, 6, -80, 4, 12, 4, neonColor);
             addWall(-80, 6, 80, 4, 12, 4, neonColor);
@@ -1010,83 +1005,44 @@
             const group = new THREE.Group();
             const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.7 });
             
-            // Голова
             const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffccaa }));
-            head.position.y = 1.7;
-            head.castShadow = true;
-            group.add(head);
+            head.position.y = 1.7; head.castShadow = true; group.add(head);
 
-            // Тело
             const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.8), mat);
-            body.position.y = 1.1;
-            body.castShadow = true;
-            group.add(body);
+            body.position.y = 1.1; body.castShadow = true; group.add(body);
 
-            // Руки
             const armL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), mat);
-            armL.position.set(-0.35, 1.1, 0);
-            armL.castShadow = true;
-            group.add(armL);
+            armL.position.set(-0.35, 1.1, 0); armL.castShadow = true; group.add(armL);
 
             const armR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), mat);
-            armR.position.set(0.35, 1.1, 0);
-            armR.castShadow = true;
-            group.add(armR);
+            armR.position.set(0.35, 1.1, 0); armR.castShadow = true; group.add(armR);
 
-            // Ноги (сохраняем ссылки для анимации)
             const legMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
             const legL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 0.15), legMat);
-            legL.position.set(-0.12, 0.35, 0);
-            legL.castShadow = true;
-            legL.name = "LegL";
-            group.add(legL);
+            legL.position.set(-0.12, 0.35, 0); legL.castShadow = true; legL.name = "LegL"; group.add(legL);
 
             const legR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 0.15), legMat);
-            legR.position.set(0.12, 0.35, 0);
-            legR.castShadow = true;
-            legR.name = "LegR";
-            group.add(legR);
+            legR.position.set(0.12, 0.35, 0); legR.castShadow = true; legR.name = "LegR"; group.add(legR);
 
-            // Оружие в руках (ОЧЕНЬ ЗАМЕТНОЕ)
             if (hasGun) {
                 const botGunMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.2 });
-                // Крупный автомат
                 const botGunBody = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.6), botGunMat);
-                botGunBody.position.set(0.35, 1.15, -0.3);
-                group.add(botGunBody);
+                botGunBody.position.set(0.35, 1.15, -0.3); group.add(botGunBody);
                 
-                // Ствол
                 const botBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4), botGunMat);
-                botBarrel.rotation.x = Math.PI / 2;
-                botBarrel.position.set(0.35, 1.17, -0.7);
-                group.add(botBarrel);
+                botBarrel.rotation.x = Math.PI / 2; botBarrel.position.set(0.35, 1.17, -0.7); group.add(botBarrel);
 
-                // Магазин
                 const botMag = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.15), botGunMat);
-                botMag.position.set(0.35, 0.95, -0.2);
-                group.add(botMag);
+                botMag.position.set(0.35, 0.95, -0.2); group.add(botMag);
 
-                // Руки держат оружие (меняем позицию правой руки)
-                armR.position.set(0.35, 1.0, -0.2);
-                armR.rotation.x = -0.5;
+                armR.position.set(0.35, 1.0, -0.2); armR.rotation.x = -0.5;
             }
 
-            // Никнейм
             if (name) {
-                const canvas = document.createElement('canvas');
-                canvas.width = 256;
-                canvas.height = 64;
-                const ctx = canvas.getContext('2d');
-                ctx.font = "Bold 32px Arial";
-                ctx.fillStyle = "#ff4444";
-                ctx.textAlign = "center";
-                ctx.fillText(name, 128, 40);
-                const texture = new THREE.CanvasTexture(canvas);
-                const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
-                const sprite = new THREE.Sprite(spriteMat);
-                sprite.position.y = 2.2;
-                sprite.scale.set(3, 0.75, 1);
-                group.add(sprite);
+                const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 64;
+                const ctx = canvas.getContext('2d'); ctx.font = "Bold 32px Arial"; ctx.fillStyle = "#ff4444"; ctx.textAlign = "center"; ctx.fillText(name, 128, 40);
+                const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
+                sprite.position.y = 2.2; sprite.scale.set(3, 0.75, 1); group.add(sprite);
             }
             return group;
         }
@@ -1098,18 +1054,16 @@
         let myHp = 100, myKills = 0, lastShootTime = 0;
         let bullets = [], bots = [];
         
-        // Физика игрока (Прыжок с зажатием)
         let velocityY = 0;
-        const gravity = -40; // Усиленная гравитация для быстрого падения
+        const gravity = -40;
         const jumpForce = 15;
-        const maxJumpHold = 0.25; // Секунд удержания для макс прыжка
+        const maxJumpHold = 0.25;
         let jumpTimer = 0;
         let onGround = true;
         let currentSpeed = 10;
         const maxSpeed = 100;
         let isJumpHeld = false;
         
-        // Состояния
         let isCrouching = false;
         let isAds = false;
         let targetFov = 75;
@@ -1119,21 +1073,15 @@
         let lastStepTime = 0;
         let myId = Math.random().toString(36).substr(2, 9);
 
-        // Онлайн (Trystero)
         let room = null;
         let sendMove, sendShoot, sendHit;
         let otherPlayers = {};
 
-        // Проверка спавна в стене
         function isSpawnValid(x, z, radius = 1.5) {
             if (Math.abs(x) > 95 || Math.abs(z) > 95) return false;
             for (let w of walls) {
-                if (x > w.position.x - w.scale.x / 2 - radius && 
-                    x < w.position.x + w.scale.x / 2 + radius && 
-                    z > w.position.z - w.scale.z / 2 - radius && 
-                    z < w.position.z + w.scale.z / 2 + radius) {
-                    return false;
-                }
+                if (x > w.position.x - w.scale.x / 2 - radius && x < w.position.x + w.scale.x / 2 + radius && 
+                    z > w.position.z - w.scale.z / 2 - radius && z < w.position.z + w.scale.z / 2 + radius) return false;
             }
             return true;
         }
@@ -1150,42 +1098,35 @@
             document.getElementById('hud').style.display = 'block';
             document.getElementById('exitBtn').style.display = 'block';
             document.getElementById('onlineStatus').style.display = 'block';
-            document.getElementById('onlineStatus').innerText = "Подключение к сети...";
+            document.getElementById('onlineStatus').innerText = "Подключение (Торрент)...";
             
             showUI();
             gameActive = true;
             
             let spawnX, spawnZ;
-            do {
-                spawnX = (Math.random() - 0.5) * 40;
-                spawnZ = (Math.random() - 0.5) * 40;
-            } while(!isSpawnValid(spawnX, spawnZ));
+            do { spawnX = (Math.random() - 0.5) * 40; spawnZ = (Math.random() - 0.5) * 40; } while(!isSpawnValid(spawnX, spawnZ));
             
             camera.position.set(spawnX, 1.6, spawnZ);
-            myHp = 100; 
-            myKills = 0; 
-            currentSpeed = 10;
+            myHp = 100; myKills = 0; currentSpeed = 10;
             
             ammoState[save.activeWeapon] = WEAPONS[save.activeWeapon].maxAmmo;
             document.getElementById('hudWeapon').innerText = WEAPONS[save.activeWeapon].name;
             document.getElementById('hudAmmo').innerText = ammoState[save.activeWeapon] + '/' + WEAPONS[save.activeWeapon].maxAmmo;
             
-            bots.forEach(b => scene.remove(b.model)); 
-            bots = [];
+            bots.forEach(b => scene.remove(b.model)); bots = [];
             for(let i = 0; i < 10; i++) spawnBot(); 
 
             try {
-                const config = { appId: 'artem-web-shooter-arena' };
-                room = Trystero.joinRoom(config, 'GlobalArenaLobby');
+                const config = { appId: 'artem-web-shooter-arena-torrent' };
+                // ИСПОЛЬЗУЕМ СТРАТЕГИЮ TORRENT (обходит блокировки)
+                room = Trystero.joinRoom(config, 'GlobalArenaLobby', 'torrent');
                 
                 const actions = {
                     move: room.makeAction('move'),
                     shoot: room.makeAction('shoot'),
                     hit: room.makeAction('hit')
                 };
-                sendMove = actions.move[0];
-                sendShoot = actions.shoot[0];
-                sendHit = actions.hit[0];
+                sendMove = actions.move[0]; sendShoot = actions.shoot[0]; sendHit = actions.hit[0];
 
                 room.onPeerJoin(id => {
                     otherPlayers[id] = { model: createStickman(0x00ffcc, "Player", true), x: 0, z: 0, rotY: 0 };
@@ -1197,42 +1138,30 @@
                 });
 
                 room.onPeerLeave(id => {
-                    if(otherPlayers[id]) {
-                        scene.remove(otherPlayers[id].model);
-                        delete otherPlayers[id];
-                    }
+                    if(otherPlayers[id]) { scene.remove(otherPlayers[id].model); delete otherPlayers[id]; }
                     addKillfeed(`Игрок отключился`);
                 });
 
                 actions.move[1]((data, id) => {
                     if(otherPlayers[id]) {
-                        otherPlayers[id].x = data.x;
-                        otherPlayers[id].z = data.z;
-                        otherPlayers[id].rotY = data.rotY;
-                        otherPlayers[id].model.position.set(data.x, 0, data.z);
-                        otherPlayers[id].model.rotation.y = data.rotY;
+                        otherPlayers[id].x = data.x; otherPlayers[id].z = data.z; otherPlayers[id].rotY = data.rotY;
+                        otherPlayers[id].model.position.set(data.x, 0, data.z); otherPlayers[id].model.rotation.y = data.rotY;
                     }
                 });
 
-                actions.shoot[1]((data, id) => {
-                    spawnBullet(data.x, data.y, data.z, new THREE.Vector3(data.dx, 0, data.dz), data.dmg, id);
-                });
-
-                actions.hit[1]((data) => {
-                    takeDamage(data.dmg);
-                });
+                actions.shoot[1]((data, id) => spawnBullet(data.x, data.y, data.z, new THREE.Vector3(data.dx, 0, data.dz), data.dmg, id));
+                actions.hit[1]((data) => takeDamage(data.dmg));
                 
-                // Если через 5 секунд никто не зашел, пишем оффлайн
                 setTimeout(() => {
                     if(Object.keys(otherPlayers).length === 0) {
-                        document.getElementById('onlineStatus').innerText = "Одиночный режим (нет игроков)";
+                        document.getElementById('onlineStatus').innerText = "Ожидание игроков...";
                         document.getElementById('onlineStatus').style.color = "#ffaa00";
                         document.getElementById('onlineStatus').style.borderColor = "#ffaa00";
                     }
                 }, 5000);
 
             } catch (e) {
-                console.log("Оффлайн режим");
+                console.log("Оффлайн режим", e);
                 document.getElementById('onlineStatus').innerText = "Оффлайн режим";
                 document.getElementById('onlineStatus').style.color = "#ff4444";
                 document.getElementById('onlineStatus').style.borderColor = "#ff4444";
@@ -1243,32 +1172,20 @@
             gameActive = false;
             document.exitPointerLock();
             if (room) room.leave();
-            save.coins += 20;
-            saveData();
-            updateCoins();
-            showMenu('menu');
+            save.coins += 20; saveData(); updateCoins(); showMenu('menu');
         }
 
         function spawnBot() {
             let x, z;
-            do {
-                x = (Math.random() - 0.5) * 160;
-                z = (Math.random() - 0.5) * 160;
-            } while(!isSpawnValid(x, z) || Math.hypot(x - camera.position.x, z - camera.position.z) < 30);
+            do { x = (Math.random() - 0.5) * 160; z = (Math.random() - 0.5) * 160; } while(!isSpawnValid(x, z) || Math.hypot(x - camera.position.x, z - camera.position.z) < 30);
 
             const model = createStickman(0xff4444, "BOT", true);
             model.position.set(x, 0, z);
             scene.add(model);
             
-            // Сохраняем ссылки на ноги для анимации
             bots.push({ 
-                model: model, 
-                hp: 100, 
-                lastShoot: 0, 
-                speed: 3 + Math.random() * 3,
-                walkTime: Math.random() * 10,
-                legL: model.getObjectByName("LegL"),
-                legR: model.getObjectByName("LegR")
+                model: model, hp: 100, lastShoot: 0, speed: 3 + Math.random() * 3, walkTime: Math.random() * 10,
+                legL: model.getObjectByName("LegL"), legR: model.getObjectByName("LegR")
             });
         }
 
@@ -1284,17 +1201,10 @@
                     let nextX = bot.model.position.x + Math.sin(angle) * bot.speed * delta;
                     let nextZ = bot.model.position.z + Math.cos(angle) * bot.speed * delta;
                     
-                    if (!isSpawnValid(nextX, bot.model.position.z, 0.8)) {
-                        bot.model.position.x = nextX;
-                        isMoving = true;
-                    }
-                    if (!isSpawnValid(bot.model.position.x, nextZ, 0.8)) {
-                        bot.model.position.z = nextZ;
-                        isMoving = true;
-                    }
+                    if (!isSpawnValid(nextX, bot.model.position.z, 0.8)) { bot.model.position.x = nextX; isMoving = true; }
+                    if (!isSpawnValid(bot.model.position.x, nextZ, 0.8)) { bot.model.position.z = nextZ; isMoving = true; }
                 }
                 
-                // Анимация ног
                 if (isMoving) {
                     bot.walkTime += delta * 12;
                     if (bot.legL) bot.legL.rotation.x = Math.sin(bot.walkTime) * 0.8;
@@ -1315,128 +1225,82 @@
         }
 
         function spawnBullet(x, y, z, dir, dmg, owner) {
-            const bGeo = new THREE.SphereGeometry(0.15, 8, 8);
-            const bMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-            const bMesh = new THREE.Mesh(bGeo, bMat);
-            bMesh.position.set(x, y, z);
-            scene.add(bMesh);
+            const bMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+            bMesh.position.set(x, y, z); scene.add(bMesh);
 
             const points = [new THREE.Vector3(x, y, z), new THREE.Vector3(x + dir.x * 5, y, z + dir.z * 5)];
-            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-            const lineMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.6 });
-            const line = new THREE.Line(lineGeo, lineMat);
-            scene.add(line);
-            setTimeout(() => scene.remove(line), 60);
+            const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.6 }));
+            scene.add(line); setTimeout(() => scene.remove(line), 60);
 
             bullets.push({ mesh: bMesh, vx: dir.x * 100, vz: dir.z * 100, owner: owner, dmg: dmg, life: 3.0 });
         }
 
         function shoot() {
             if (!gameActive || isEditingUI || isReloading) return;
-            let now = performance.now();
-            let w = WEAPONS[save.activeWeapon];
+            let now = performance.now(), w = WEAPONS[save.activeWeapon];
             
             if (now - lastShootTime > w.rate) {
-                if (ammoState[save.activeWeapon] <= 0) {
-                    reload();
-                    return;
-                }
+                if (ammoState[save.activeWeapon] <= 0) { reload(); return; }
                 
-                lastShootTime = now;
-                playSound('shoot');
-                
-                recoilOffset = 0.15;
-                muzzleFlash.material.opacity = 1;
-                setTimeout(() => muzzleFlash.material.opacity = 0, 50);
+                lastShootTime = now; playSound('shoot');
+                recoilOffset = 0.15; muzzleFlash.material.opacity = 1; setTimeout(() => muzzleFlash.material.opacity = 0, 50);
 
                 ammoState[save.activeWeapon]--;
                 document.getElementById('hudAmmo').innerText = ammoState[save.activeWeapon] + '/' + w.maxAmmo;
 
-                let spreadX = (Math.random() - 0.5) * w.spread;
-                let spreadZ = (Math.random() - 0.5) * w.spread;
-                
                 let dir = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation).normalize();
-                dir.x += spreadX;
-                dir.z += spreadZ;
-                dir.normalize();
+                dir.x += (Math.random() - 0.5) * w.spread; dir.z += (Math.random() - 0.5) * w.spread; dir.normalize();
 
                 spawnBullet(camera.position.x, camera.position.y - 0.1, camera.position.z, dir, w.dmg, "player");
-                
-                if (sendShoot) {
-                    sendShoot({ x: camera.position.x, y: camera.position.y, z: camera.position.z, dx: dir.x, dz: dir.z, dmg: w.dmg });
-                }
+                if (sendShoot) sendShoot({ x: camera.position.x, y: camera.position.y, z: camera.position.z, dx: dir.x, dz: dir.z, dmg: w.dmg });
             }
         }
 
         function reload() {
             if (isReloading || ammoState[save.activeWeapon] === WEAPONS[save.activeWeapon].maxAmmo) return;
-            isReloading = true;
-            document.getElementById('hudAmmo').innerText = "RELOADING...";
-            document.getElementById('hudAmmo').style.color = "#ff4444";
+            isReloading = true; document.getElementById('hudAmmo').innerText = "RELOADING..."; document.getElementById('hudAmmo').style.color = "#ff4444";
             
             setTimeout(() => {
                 ammoState[save.activeWeapon] = WEAPONS[save.activeWeapon].maxAmmo;
                 document.getElementById('hudAmmo').innerText = ammoState[save.activeWeapon] + '/' + WEAPONS[save.activeWeapon].maxAmmo;
-                document.getElementById('hudAmmo').style.color = "#00ffcc";
-                isReloading = false;
+                document.getElementById('hudAmmo').style.color = "#00ffcc"; isReloading = false;
             }, WEAPONS[save.activeWeapon].reloadTime * 1000);
         }
 
         function takeDamage(dmg) {
             myHp -= dmg;
-            document.getElementById('stats').style.borderLeftColor = "#ff0000";
-            setTimeout(() => document.getElementById('stats').style.borderLeftColor = "#00ffcc", 200);
+            document.getElementById('stats').style.borderLeftColor = "#ff0000"; setTimeout(() => document.getElementById('stats').style.borderLeftColor = "#00ffcc", 200);
 
             if (myHp <= 0) {
                 myHp = 100;
                 let spawnX, spawnZ;
-                do {
-                    spawnX = (Math.random() - 0.5) * 80;
-                    spawnZ = (Math.random() - 0.5) * 80;
-                } while(!isSpawnValid(spawnX, spawnZ));
+                do { spawnX = (Math.random() - 0.5) * 80; spawnZ = (Math.random() - 0.5) * 80; } while(!isSpawnValid(spawnX, spawnZ));
                 camera.position.set(spawnX, 1.6, spawnZ);
                 addKillfeed("Вас убили!");
             }
         }
 
         function addKillfeed(text) {
-            const feed = document.getElementById('killfeed');
-            const msg = document.createElement('div');
-            msg.className = 'kill-msg';
-            msg.innerText = text;
-            feed.appendChild(msg);
-            setTimeout(() => msg.remove(), 3000);
+            const feed = document.getElementById('killfeed'); const msg = document.createElement('div');
+            msg.className = 'kill-msg'; msg.innerText = text; feed.appendChild(msg); setTimeout(() => msg.remove(), 3000);
         }
 
         function updateBullets(delta) {
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i];
-                b.mesh.position.x += b.vx * delta;
-                b.mesh.position.z += b.vz * delta;
-                b.life -= delta;
+                b.mesh.position.x += b.vx * delta; b.mesh.position.z += b.vz * delta; b.life -= delta;
                 let hit = false;
 
                 if (b.owner === "bot") {
                     if (Math.hypot(b.mesh.position.x - camera.position.x, b.mesh.position.z - camera.position.z) < 1.0) {
-                        hit = true;
-                        takeDamage(b.dmg);
-                        spawnParticles(b.mesh.position, 0xff0000);
+                        hit = true; takeDamage(b.dmg); spawnParticles(b.mesh.position, 0xff0000);
                     }
                 } 
                 else if (b.owner === "player") {
                     bots.forEach((bot, idx) => {
                         if (Math.hypot(b.mesh.position.x - bot.model.position.x, b.mesh.position.z - bot.model.position.z) < 1.2) {
-                            hit = true;
-                            bot.hp -= b.dmg;
-                            spawnParticles(b.mesh.position, 0xffaa00);
-                            playSound('hit');
-                            if (bot.hp <= 0) {
-                                scene.remove(bot.model);
-                                bots.splice(idx, 1);
-                                myKills++;
-                                addKillfeed("Вы убили бота");
-                                setTimeout(spawnBot, 3000);
-                            }
+                            hit = true; bot.hp -= b.dmg; spawnParticles(b.mesh.position, 0xffaa00); playSound('hit');
+                            if (bot.hp <= 0) { scene.remove(bot.model); bots.splice(idx, 1); myKills++; addKillfeed("Вы убили бота"); setTimeout(spawnBot, 3000); }
                         }
                     });
                 }
@@ -1445,42 +1309,26 @@
                         if (id !== b.owner) {
                             let p = otherPlayers[id];
                             if (Math.hypot(b.mesh.position.x - p.x, b.mesh.position.z - p.z) < 1.2) {
-                                hit = true;
-                                spawnParticles(b.mesh.position, 0xff0000);
-                                if (b.owner === myId && sendHit) {
-                                    sendHit({ dmg: b.dmg }, id);
-                                    myKills++;
-                                    addKillfeed("Вы убили игрока");
-                                }
+                                hit = true; spawnParticles(b.mesh.position, 0xff0000);
+                                if (b.owner === myId && sendHit) { sendHit({ dmg: b.dmg }, id); myKills++; addKillfeed("Вы убили игрока"); }
                             }
                         }
                     }
                 }
 
                 walls.forEach(w => {
-                    if (Math.abs(b.mesh.position.x - w.position.x) < w.scale.x / 2 && 
-                        Math.abs(b.mesh.position.z - w.position.z) < w.scale.z / 2) {
-                        hit = true;
-                        spawnParticles(b.mesh.position, 0x888888);
-                    }
+                    if (Math.abs(b.mesh.position.x - w.position.x) < w.scale.x / 2 && Math.abs(b.mesh.position.z - w.position.z) < w.scale.z / 2) { hit = true; spawnParticles(b.mesh.position, 0x888888); }
                 });
 
-                if (hit || b.life <= 0) {
-                    scene.remove(b.mesh);
-                    bullets.splice(i, 1);
-                }
+                if (hit || b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
             }
         }
 
         function checkCollision(nx, nz) {
             let r = 0.8;
             for (let w of walls) {
-                if (nx > w.position.x - w.scale.x / 2 - r && 
-                    nx < w.position.x + w.scale.x / 2 + r && 
-                    nz > w.position.z - w.scale.z / 2 - r && 
-                    nz < w.position.z + w.scale.z / 2 + r) {
-                    return true;
-                }
+                if (nx > w.position.x - w.scale.x / 2 - r && nx < w.position.x + w.scale.x / 2 + r && 
+                    nz > w.position.z - w.scale.z / 2 - r && nz < w.position.z + w.scale.z / 2 + r) return true;
             }
             return false;
         }
@@ -1491,20 +1339,10 @@
         window.addEventListener('keydown', e => {
             keys[e.code] = true;
             if (e.code === 'Space' && onGround && gameActive && !isEditingUI) {
-                velocityY = jumpForce;
-                onGround = false;
-                currentSpeed = Math.min(currentSpeed + 5, maxSpeed);
-                isJumpHeld = true;
-                jumpTimer = 0;
+                velocityY = jumpForce; onGround = false; currentSpeed = Math.min(currentSpeed + 5, maxSpeed); isJumpHeld = true; jumpTimer = 0;
             }
-            if (e.code === 'KeyC' && gameActive) {
-                isCrouching = true;
-                targetHeight = 1.0;
-            }
-            if (e.code === 'ShiftLeft' && gameActive) {
-                isAds = true;
-                targetFov = save.scopeFov;
-            }
+            if (e.code === 'KeyC' && gameActive) { isCrouching = true; targetHeight = 1.0; }
+            if (e.code === 'ShiftLeft' && gameActive) { isAds = true; targetFov = save.scopeFov; }
             if (e.code === 'KeyR' && gameActive) reload();
             if (e.code === 'Digit1' && save.weapons.includes('pistol')) switchWeapon('pistol');
             if (e.code === 'Digit2' && save.weapons.includes('rifle')) switchWeapon('rifle');
@@ -1515,87 +1353,48 @@
         window.addEventListener('keyup', e => {
             keys[e.code] = false;
             if (e.code === 'Space') isJumpHeld = false;
-            if (e.code === 'KeyC') {
-                isCrouching = false;
-                targetHeight = 1.6;
-            }
-            if (e.code === 'ShiftLeft') {
-                isAds = false;
-                targetFov = 75;
-            }
+            if (e.code === 'KeyC') { isCrouching = false; targetHeight = 1.6; }
+            if (e.code === 'ShiftLeft') { isAds = false; targetFov = 75; }
         });
 
         function switchWeapon(w) {
-            save.activeWeapon = w;
-            ammoState[w] = WEAPONS[w].maxAmmo;
+            save.activeWeapon = w; ammoState[w] = WEAPONS[w].maxAmmo;
             document.getElementById('hudWeapon').innerText = WEAPONS[w].name;
             document.getElementById('hudAmmo').innerText = ammoState[w] + '/' + WEAPONS[w].maxAmmo;
-            document.getElementById('weaponUI').style.borderBottomColor = "#ffcc00";
-            setTimeout(() => document.getElementById('weaponUI').style.borderBottomColor = "#00ffcc", 300);
+            document.getElementById('weaponUI').style.borderBottomColor = "#ffcc00"; setTimeout(() => document.getElementById('weaponUI').style.borderBottomColor = "#00ffcc", 300);
         }
 
-        // --- ДЖОЙСТИК ---
-        const joy = document.getElementById('joystick');
-        const knob = document.getElementById('joyKnob');
+        const joy = document.getElementById('joystick'), knob = document.getElementById('joyKnob');
         let joyTouchId = null;
 
         joy.addEventListener('touchstart', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
-            joyTouchId = e.changedTouches[0].identifier;
+            if (isEditingUI) return; e.preventDefault(); e.stopPropagation(); joyTouchId = e.changedTouches[0].identifier;
         }, { passive: false });
 
         joy.addEventListener('touchmove', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
+            if (isEditingUI) return; e.preventDefault(); e.stopPropagation();
             for (let i = 0; i < e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
                 if (t.identifier === joyTouchId) {
-                    let rect = joy.getBoundingClientRect();
-                    let dx = t.clientX - (rect.left + rect.width / 2);
-                    let dy = t.clientY - (rect.top + rect.height / 2);
-                    let dist = Math.hypot(dx, dy);
-                    let maxDist = 60;
-                    if (dist > maxDist) {
-                        dx = (dx / dist) * maxDist;
-                        dy = (dy / dist) * maxDist;
-                    }
+                    let rect = joy.getBoundingClientRect(), dx = t.clientX - (rect.left + rect.width / 2), dy = t.clientY - (rect.top + rect.height / 2), dist = Math.hypot(dx, dy), maxDist = 60;
+                    if (dist > maxDist) { dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; }
                     knob.style.transform = `translate(${dx}px, ${dy}px)`;
-                    moveX = dx / maxDist;
-                    moveY = dy / maxDist;
+                    moveX = dx / maxDist; moveY = dy / maxDist;
                 }
             }
         }, { passive: false });
 
         joy.addEventListener('touchend', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === joyTouchId) {
-                    joyTouchId = null;
-                    moveX = 0;
-                    moveY = 0;
-                    knob.style.transform = `translate(0px, 0px)`;
-                }
-            }
+            if (isEditingUI) return; e.preventDefault(); e.stopPropagation();
+            for (let i = 0; i < e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joyTouchId) { joyTouchId = null; moveX = 0; moveY = 0; knob.style.transform = `translate(0px, 0px)`; } }
         }, { passive: false });
 
-        // --- КАМЕРА ---
         let lookTouchId = null, lastLookX = 0, lastLookY = 0;
-        
         renderer.domElement.addEventListener('touchstart', (e) => {
             if (isEditingUI) return;
             for (let i = 0; i < e.changedTouches.length; i++) {
-                let t = e.changedTouches[i];
-                let isRightBottom = (t.clientX > window.innerWidth - 180 && t.clientY > window.innerHeight - 180);
-                if (t.clientX > window.innerWidth / 3 && !isRightBottom) {
-                    lookTouchId = t.identifier;
-                    lastLookX = t.clientX;
-                    lastLookY = t.clientY;
-                }
+                let t = e.changedTouches[i], isRightBottom = (t.clientX > window.innerWidth - 180 && t.clientY > window.innerHeight - 180);
+                if (t.clientX > window.innerWidth / 3 && !isRightBottom) { lookTouchId = t.identifier; lastLookX = t.clientX; lastLookY = t.clientY; }
             }
         }, { passive: false });
 
@@ -1604,105 +1403,36 @@
             for (let i = 0; i < e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
                 if (t.identifier === lookTouchId) {
-                    e.preventDefault();
-                    let dx = t.clientX - lastLookX;
-                    let dy = t.clientY - lastLookY;
-                    let sensMult = isAds ? 0.4 : 1.0;
-                    yaw -= dx * 0.005 * save.sensitivity * sensMult;
-                    pitch -= dy * 0.005 * save.sensitivity * sensMult;
+                    e.preventDefault(); let dx = t.clientX - lastLookX, dy = t.clientY - lastLookY, sensMult = isAds ? 0.4 : 1.0;
+                    yaw -= dx * 0.005 * save.sensitivity * sensMult; pitch -= dy * 0.005 * save.sensitivity * sensMult;
                     pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
-                    lastLookX = t.clientX;
-                    lastLookY = t.clientY;
+                    lastLookX = t.clientX; lastLookY = t.clientY;
                 }
             }
         }, { passive: false });
 
-        renderer.domElement.addEventListener('touchend', () => {
-            lookTouchId = null;
-        });
+        renderer.domElement.addEventListener('touchend', () => { lookTouchId = null; });
 
-        // ПК Мышь
         document.addEventListener('mousemove', (e) => {
             if (document.pointerLockElement === renderer.domElement && !isEditingUI) {
                 let sensMult = isAds ? 0.4 : 1.0;
-                yaw -= e.movementX * 0.002 * save.sensitivity * sensMult;
-                pitch -= e.movementY * 0.002 * save.sensitivity * sensMult;
+                yaw -= e.movementX * 0.002 * save.sensitivity * sensMult; pitch -= e.movementY * 0.002 * save.sensitivity * sensMult;
                 pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
             }
         });
 
         renderer.domElement.addEventListener('click', () => {
-            if (!('ontouchstart' in window) && gameActive && !isEditingUI) {
-                renderer.domElement.requestPointerLock();
-            }
+            if (!('ontouchstart' in window) && gameActive && !isEditingUI) renderer.domElement.requestPointerLock();
         });
 
-        // --- КНОПКИ ---
-        document.getElementById('btnShoot').addEventListener('pointerdown', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
-            shoot();
-        });
-
-        document.getElementById('btnReload').addEventListener('touchstart', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
-            reload();
-        }, { passive: false });
-
-        document.getElementById('btnJump').addEventListener('touchstart', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
-            if (onGround && gameActive) {
-                velocityY = jumpForce;
-                onGround = false;
-                currentSpeed = Math.min(currentSpeed + 5, maxSpeed);
-                isJumpHeld = true;
-                jumpTimer = 0;
-            }
-        }, { passive: false });
-
-        document.getElementById('btnJump').addEventListener('touchend', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
-            isJumpHeld = false;
-        }, { passive: false });
-
-        document.getElementById('btnCrouch').addEventListener('touchstart', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
-            isCrouching = true;
-            targetHeight = 1.0;
-        }, { passive: false });
-
-        document.getElementById('btnCrouch').addEventListener('touchend', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
-            isCrouching = false;
-            targetHeight = 1.6;
-        }, { passive: false });
-
-        document.getElementById('btnAds').addEventListener('touchstart', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
-            isAds = true;
-            targetFov = save.scopeFov;
-        }, { passive: false });
-
-        document.getElementById('btnAds').addEventListener('touchend', (e) => {
-            if (isEditingUI) return;
-            e.preventDefault();
-            e.stopPropagation();
-            isAds = false;
-            targetFov = 75;
-        }, { passive: false });
+        document.getElementById('btnShoot').addEventListener('pointerdown', (e) => { if (isEditingUI) return; e.preventDefault(); e.stopPropagation(); shoot(); });
+        document.getElementById('btnReload').addEventListener('touchstart', (e) => { if (isEditingUI) return; e.preventDefault(); e.stopPropagation(); reload(); }, { passive: false });
+        document.getElementById('btnJump').addEventListener('touchstart', (e) => { if (isEditingUI) return; e.preventDefault(); e.stopPropagation(); if (onGround && gameActive) { velocityY = jumpForce; onGround = false; currentSpeed = Math.min(currentSpeed + 5, maxSpeed); isJumpHeld = true; jumpTimer = 0; } }, { passive: false });
+        document.getElementById('btnJump').addEventListener('touchend', (e) => { if (isEditingUI) return; e.preventDefault(); e.stopPropagation(); isJumpHeld = false; }, { passive: false });
+        document.getElementById('btnCrouch').addEventListener('touchstart', (e) => { if (isEditingUI) return; e.preventDefault(); e.stopPropagation(); isCrouching = true; targetHeight = 1.0; }, { passive: false });
+        document.getElementById('btnCrouch').addEventListener('touchend', (e) => { if (isEditingUI) return; e.preventDefault(); e.stopPropagation(); isCrouching = false; targetHeight = 1.6; }, { passive: false });
+        document.getElementById('btnAds').addEventListener('touchstart', (e) => { if (isEditingUI) return; e.preventDefault(); e.stopPropagation(); isAds = true; targetFov = save.scopeFov; }, { passive: false });
+        document.getElementById('btnAds').addEventListener('touchend', (e) => { if (isEditingUI) return; e.preventDefault(); e.stopPropagation(); isAds = false; targetFov = 75; }, { passive: false });
 
         // ==========================================
         // 7. ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ
@@ -1717,111 +1447,51 @@
             if (gameActive && !isEditingUI) {
                 camera.rotation.set(pitch, yaw, 0);
 
-                // Прицеливание (FOV)
                 if (Math.abs(camera.fov - targetFov) > 0.1) {
-                    camera.fov += (targetFov - camera.fov) * 15 * delta;
-                    camera.updateProjectionMatrix();
+                    camera.fov += (targetFov - camera.fov) * 15 * delta; camera.updateProjectionMatrix();
                     document.getElementById('crosshair').style.transform = `translate(-50%, -50%) scale(${isAds ? 0.5 : 1})`;
                 }
 
-                // Присед
-                if (Math.abs(camera.position.y - targetHeight) > 0.05) {
-                    camera.position.y += (targetHeight - camera.position.y) * 15 * delta;
-                }
+                if (Math.abs(camera.position.y - targetHeight) > 0.05) { camera.position.y += (targetHeight - camera.position.y) * 15 * delta; }
+                if (recoilOffset > 0) { recoilOffset -= 4 * delta; if (recoilOffset < 0) recoilOffset = 0; }
+                gunGroup.position.z = -0.5 + recoilOffset; gunGroup.rotation.x = recoilOffset * 0.5;
 
-                // Отдача оружия
-                if (recoilOffset > 0) {
-                    recoilOffset -= 4 * delta;
-                    if (recoilOffset < 0) recoilOffset = 0;
-                }
-                gunGroup.position.z = -0.5 + recoilOffset;
-                gunGroup.rotation.x = recoilOffset * 0.5;
-
-                // Движение
-                let forward = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
-                let right = new THREE.Vector3(1, 0, 0).applyEuler(camera.rotation);
-
+                let forward = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation), right = new THREE.Vector3(1, 0, 0).applyEuler(camera.rotation);
                 let fwdInput = 0, rightInput = 0;
                 if (keys['KeyW'] || keys['ArrowUp']) fwdInput += 1;
                 if (keys['KeyS'] || keys['ArrowDown']) fwdInput -= 1;
                 if (keys['KeyD'] || keys['ArrowRight']) rightInput += 1;
                 if (keys['KeyA'] || keys['ArrowLeft']) rightInput -= 1;
-                fwdInput -= moveY;
-                rightInput += moveX;
+                fwdInput -= moveY; rightInput += moveX;
 
-                let moveVec = new THREE.Vector3();
-                moveVec.addScaledVector(forward, fwdInput);
-                moveVec.addScaledVector(right, rightInput);
-
+                let moveVec = new THREE.Vector3(); moveVec.addScaledVector(forward, fwdInput); moveVec.addScaledVector(right, rightInput);
                 if (moveVec.length() > 0) {
-                    moveVec.normalize();
-                    let speedMult = isCrouching ? 0.5 : 1.0;
-                    let moveSpeed = currentSpeed * speedMult * delta;
-
-                    let nextX = camera.position.x + moveVec.x * moveSpeed;
-                    if (!checkCollision(nextX, camera.position.z)) camera.position.x = nextX;
-
-                    let nextZ = camera.position.z + moveVec.z * moveSpeed;
-                    if (!checkCollision(camera.position.x, nextZ)) camera.position.z = nextZ;
-
-                    if (onGround) {
-                        currentSpeed = Math.max(10, currentSpeed - 25 * delta);
-                    }
-
-                    if (onGround && performance.now() - lastStepTime > 400 - currentSpeed * 2) {
-                        playSound('step');
-                        lastStepTime = performance.now();
-                    }
+                    moveVec.normalize(); let speedMult = isCrouching ? 0.5 : 1.0, moveSpeed = currentSpeed * speedMult * delta;
+                    let nextX = camera.position.x + moveVec.x * moveSpeed; if (!checkCollision(nextX, camera.position.z)) camera.position.x = nextX;
+                    let nextZ = camera.position.z + moveVec.z * moveSpeed; if (!checkCollision(camera.position.x, nextZ)) camera.position.z = nextZ;
+                    if (onGround) currentSpeed = Math.max(10, currentSpeed - 25 * delta);
+                    if (onGround && performance.now() - lastStepTime > 400 - currentSpeed * 2) { playSound('step'); lastStepTime = performance.now(); }
                 }
 
-                // Прыжок с зажатием (Hold Jump)
-                if (isJumpHeld && !onGround && jumpTimer < maxJumpHold) {
-                    velocityY += 25 * delta; 
-                    jumpTimer += delta;
-                }
+                if (isJumpHeld && !onGround && jumpTimer < maxJumpHold) { velocityY += 25 * delta; jumpTimer += delta; }
+                if (!onGround) { velocityY += gravity * delta; camera.position.y += velocityY * delta; }
+                if (camera.position.y <= targetHeight) { camera.position.y = targetHeight; velocityY = 0; onGround = true; } else { onGround = false; }
 
-                // Гравитация
-                if (!onGround) {
-                    velocityY += gravity * delta;
-                    camera.position.y += velocityY * delta;
-                }
-
-                if (camera.position.y <= targetHeight) {
-                    camera.position.y = targetHeight;
-                    velocityY = 0;
-                    onGround = true;
-                } else {
-                    onGround = false;
-                }
-
-                // Ограничение карты
                 camera.position.x = Math.max(-98, Math.min(98, camera.position.x));
                 camera.position.z = Math.max(-98, Math.min(98, camera.position.z));
 
-                // Синхронизация сети
-                if (sendMove) {
-                    sendMove({ x: camera.position.x, z: camera.position.z, rotY: yaw });
-                }
+                if (sendMove) sendMove({ x: camera.position.x, z: camera.position.z, rotY: yaw });
 
-                updateBots(delta);
-                updateBullets(delta);
-                updateParticles(delta);
+                updateBots(delta); updateBullets(delta); updateParticles(delta);
 
                 document.getElementById('hudHp').innerText = Math.max(0, myHp);
                 document.getElementById('hudKills').innerText = myKills;
                 document.getElementById('hudSpeed').innerText = Math.round(currentSpeed);
             }
-
             renderer.render(scene, camera);
         }
-
         animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     </script>
 </body>
 </html>
