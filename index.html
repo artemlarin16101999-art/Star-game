@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Web 3D Shooter: ARENA EDITION</title>
+    <title>Web 3D Shooter: ARENA</title>
+    <!-- Three.js для 3D -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Trystero для онлайн-режима -->
     <script src="https://cdn.jsdelivr.net/npm/trystero@0.21.0/dist/trystero-mqtt.min.js"></script>
     <style>
         body {
@@ -224,6 +226,20 @@
             100% { opacity: 0; }
         }
 
+        #onlineStatus {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #ffaa00;
+            border: 1px solid #ffaa00;
+        }
+
         /* --- МОБИЛЬНОЕ УПРАВЛЕНИЕ --- */
         .ui-element {
             position: absolute;
@@ -368,16 +384,16 @@
     </div>
 
     <div id="menu">
-        <h1>WEB 3D SHOOTER</h1>
+        <h1>ARENA</h1>
         <p style="font-size: 18px; margin: 5px;">Игрок: <span id="menuUser" style="color: #00ffcc; font-weight: bold;"></span></p>
         <p style="font-size: 18px; margin: 5px;">Баланс: <span id="menuCoins" style="color: #ffcc00; font-weight: bold;">0</span> 🪙</p>
         
         <div style="background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 8px; margin: 15px 0; border: 1px solid #444;">
             <h3 style="margin: 0; color: #ffcc00;">КАРТА: АРЕНА</h3>
-            <small style="color: #aaa;">Большая локация с укрытиями</small>
+            <small style="color: #aaa;">Большая локация с укрытиями и 10 ботами</small>
         </div>
 
-        <button class="btn btn-green" onclick="joinGame()">В БОЙ</button>
+        <button class="btn btn-green" onclick="joinGame()">В БОЙ (ОНЛАЙН)</button>
         <button class="btn btn-blue" onclick="showMenu('shopMenu')">МАГАЗИН ОРУЖИЯ</button>
         <button class="btn" onclick="showMenu('settingsMenu')">НАСТРОЙКИ</button>
         
@@ -422,7 +438,7 @@
         <h1>НАСТРОЙКИ</h1>
         
         <div class="setting-row">
-            <label>Чувствительность камеры: <span id="sensVal">1.0</span></label>
+            <label>Чувствительность: <span id="sensVal">1.0</span></label>
             <input type="range" id="sensSlider" min="0.1" max="3.0" step="0.1" value="1.0">
         </div>
         <div class="setting-row">
@@ -445,6 +461,7 @@
 
     <div id="hud">
         <div id="crosshair"></div>
+        <div id="onlineStatus">Поиск игроков...</div>
         <button id="exitBtn" onclick="leaveGame()">ПОКИНУТЬ МАТЧ</button>
         
         <div id="stats">
@@ -960,20 +977,18 @@
             addWall(0, 3, 0, 30, 6, 30, wallColor); // Центральный блок
             addWall(0, 7, 0, 20, 2, 20, neonColor); // Неоновый верх
 
-            // Укрытия (Кубы и стены) - Генерируем случайно, но с умом
+            // Укрытия (Кубы и стены)
             for(let i = 0; i < 40; i++) {
                 let isCrate = Math.random() > 0.3;
                 let x = (Math.random() - 0.5) * 160;
                 let z = (Math.random() - 0.5) * 160;
                 
-                // Не спавним слишком близко к центру
-                if (Math.hypot(x, z) < 25) continue;
+                if (Math.hypot(x, z) < 25) continue; // Не спавним в центре
 
                 if (isCrate) {
                     let size = 3 + Math.random() * 4;
                     addWall(x, size/2, z, size, size, size, crateColor, true);
                 } else {
-                    // Длинные стены
                     let isX = Math.random() > 0.5;
                     if (isX) {
                         addWall(x, 2.5, z, 15 + Math.random() * 10, 5, 2, wallColor);
@@ -1032,17 +1047,28 @@
             legR.name = "LegR";
             group.add(legR);
 
-            // Оружие в руках
+            // Оружие в руках (ОЧЕНЬ ЗАМЕТНОЕ)
             if (hasGun) {
-                const botGunMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8 });
-                const botGunBody = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.4), botGunMat);
-                botGunBody.position.set(0.35, 1.1, -0.2);
+                const botGunMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.2 });
+                // Крупный автомат
+                const botGunBody = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.6), botGunMat);
+                botGunBody.position.set(0.35, 1.15, -0.3);
                 group.add(botGunBody);
                 
-                const botBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2), botGunMat);
+                // Ствол
+                const botBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4), botGunMat);
                 botBarrel.rotation.x = Math.PI / 2;
-                botBarrel.position.set(0.35, 1.1, -0.4);
+                botBarrel.position.set(0.35, 1.17, -0.7);
                 group.add(botBarrel);
+
+                // Магазин
+                const botMag = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.15), botGunMat);
+                botMag.position.set(0.35, 0.95, -0.2);
+                group.add(botMag);
+
+                // Руки держат оружие (меняем позицию правой руки)
+                armR.position.set(0.35, 1.0, -0.2);
+                armR.rotation.x = -0.5;
             }
 
             // Никнейм
@@ -1072,9 +1098,9 @@
         let myHp = 100, myKills = 0, lastShootTime = 0;
         let bullets = [], bots = [];
         
-        // Физика игрока
+        // Физика игрока (Прыжок с зажатием)
         let velocityY = 0;
-        const gravity = -35;
+        const gravity = -40; // Усиленная гравитация для быстрого падения
         const jumpForce = 15;
         const maxJumpHold = 0.25; // Секунд удержания для макс прыжка
         let jumpTimer = 0;
@@ -1100,9 +1126,8 @@
 
         // Проверка спавна в стене
         function isSpawnValid(x, z, radius = 1.5) {
-            if (Math.abs(x) > 95 || Math.abs(z) > 95) return false; // Вне арены
+            if (Math.abs(x) > 95 || Math.abs(z) > 95) return false;
             for (let w of walls) {
-                // Упрощенная AABB проверка
                 if (x > w.position.x - w.scale.x / 2 - radius && 
                     x < w.position.x + w.scale.x / 2 + radius && 
                     z > w.position.z - w.scale.z / 2 - radius && 
@@ -1124,11 +1149,12 @@
             
             document.getElementById('hud').style.display = 'block';
             document.getElementById('exitBtn').style.display = 'block';
+            document.getElementById('onlineStatus').style.display = 'block';
+            document.getElementById('onlineStatus').innerText = "Подключение к сети...";
             
             showUI();
             gameActive = true;
             
-            // Спавн игрока в безопасном месте
             let spawnX, spawnZ;
             do {
                 spawnX = (Math.random() - 0.5) * 40;
@@ -1146,12 +1172,11 @@
             
             bots.forEach(b => scene.remove(b.model)); 
             bots = [];
-            for(let i = 0; i < 10; i++) spawnBot(); // Больше ботов на большой карте
+            for(let i = 0; i < 10; i++) spawnBot(); 
 
-            // Инициализация онлайн режима
             try {
-                const config = { appId: 'artem-web-shooter-max' };
-                room = Trystero.joinRoom(config, 'GlobalLobbyMax');
+                const config = { appId: 'artem-web-shooter-arena' };
+                room = Trystero.joinRoom(config, 'GlobalArenaLobby');
                 
                 const actions = {
                     move: room.makeAction('move'),
@@ -1166,6 +1191,9 @@
                     otherPlayers[id] = { model: createStickman(0x00ffcc, "Player", true), x: 0, z: 0, rotY: 0 };
                     scene.add(otherPlayers[id].model);
                     addKillfeed(`Игрок ${id.substr(0,4)} подключился`);
+                    document.getElementById('onlineStatus').innerText = "В сети";
+                    document.getElementById('onlineStatus').style.color = "#00ff00";
+                    document.getElementById('onlineStatus').style.borderColor = "#00ff00";
                 });
 
                 room.onPeerLeave(id => {
@@ -1193,10 +1221,21 @@
                 actions.hit[1]((data) => {
                     takeDamage(data.dmg);
                 });
+                
+                // Если через 5 секунд никто не зашел, пишем оффлайн
+                setTimeout(() => {
+                    if(Object.keys(otherPlayers).length === 0) {
+                        document.getElementById('onlineStatus').innerText = "Одиночный режим (нет игроков)";
+                        document.getElementById('onlineStatus').style.color = "#ffaa00";
+                        document.getElementById('onlineStatus').style.borderColor = "#ffaa00";
+                    }
+                }, 5000);
 
             } catch (e) {
                 console.log("Оффлайн режим");
-                addKillfeed("Онлайн недоступен. Игра с ботами.");
+                document.getElementById('onlineStatus').innerText = "Оффлайн режим";
+                document.getElementById('onlineStatus').style.color = "#ff4444";
+                document.getElementById('onlineStatus').style.borderColor = "#ff4444";
             }
         }
 
@@ -1204,7 +1243,7 @@
             gameActive = false;
             document.exitPointerLock();
             if (room) room.leave();
-            save.coins += 20; // Больше награда за игру
+            save.coins += 20;
             saveData();
             updateCoins();
             showMenu('menu');
@@ -1212,7 +1251,6 @@
 
         function spawnBot() {
             let x, z;
-            // Ищем безопасную точку спавна, подальше от игрока
             do {
                 x = (Math.random() - 0.5) * 160;
                 z = (Math.random() - 0.5) * 160;
@@ -1228,7 +1266,9 @@
                 hp: 100, 
                 lastShoot: 0, 
                 speed: 3 + Math.random() * 3,
-                walkTime: Math.random() * 10 
+                walkTime: Math.random() * 10,
+                legL: model.getObjectByName("LegL"),
+                legR: model.getObjectByName("LegR")
             });
         }
 
@@ -1240,7 +1280,6 @@
                 
                 let isMoving = false;
                 
-                // Движение к игроку
                 if (dist > 8) {
                     let nextX = bot.model.position.x + Math.sin(angle) * bot.speed * delta;
                     let nextZ = bot.model.position.z + Math.cos(angle) * bot.speed * delta;
@@ -1256,23 +1295,18 @@
                 }
                 
                 // Анимация ног
-                const legL = bot.model.getObjectByName("LegL");
-                const legR = bot.model.getObjectByName("LegR");
-                
                 if (isMoving) {
                     bot.walkTime += delta * 12;
-                    if (legL) legL.rotation.x = Math.sin(bot.walkTime) * 0.8;
-                    if (legR) legR.rotation.x = -Math.sin(bot.walkTime) * 0.8;
+                    if (bot.legL) bot.legL.rotation.x = Math.sin(bot.walkTime) * 0.8;
+                    if (bot.legR) bot.legR.rotation.x = -Math.sin(bot.walkTime) * 0.8;
                 } else {
-                    if (legL) legL.rotation.x = 0;
-                    if (legR) legR.rotation.x = 0;
+                    if (bot.legL) bot.legL.rotation.x = 0;
+                    if (bot.legR) bot.legR.rotation.x = 0;
                 }
 
-                // Стрельба
                 if (dist < 50 && performance.now() - bot.lastShoot > 1500 + Math.random() * 1000) {
                     bot.lastShoot = performance.now();
                     let dir = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle)).normalize();
-                    // Смещаем точку выстрела к пушке бота
                     let startX = bot.model.position.x + Math.sin(angle) * 0.4;
                     let startZ = bot.model.position.z + Math.cos(angle) * 0.4;
                     spawnBullet(startX, 1.5, startZ, dir, 10, "bot");
@@ -1287,7 +1321,6 @@
             bMesh.position.set(x, y, z);
             scene.add(bMesh);
 
-            // Трассер (линия)
             const points = [new THREE.Vector3(x, y, z), new THREE.Vector3(x + dir.x * 5, y, z + dir.z * 5)];
             const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
             const lineMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.6 });
@@ -1312,7 +1345,6 @@
                 lastShootTime = now;
                 playSound('shoot');
                 
-                // Визуал выстрела
                 recoilOffset = 0.15;
                 muzzleFlash.material.opacity = 1;
                 setTimeout(() => muzzleFlash.material.opacity = 0, 50);
@@ -1320,7 +1352,6 @@
                 ammoState[save.activeWeapon]--;
                 document.getElementById('hudAmmo').innerText = ammoState[save.activeWeapon] + '/' + w.maxAmmo;
 
-                // Добавляем разброс
                 let spreadX = (Math.random() - 0.5) * w.spread;
                 let spreadZ = (Math.random() - 0.5) * w.spread;
                 
@@ -1353,13 +1384,11 @@
 
         function takeDamage(dmg) {
             myHp -= dmg;
-            // Красная вспышка при получении урона
             document.getElementById('stats').style.borderLeftColor = "#ff0000";
             setTimeout(() => document.getElementById('stats').style.borderLeftColor = "#00ffcc", 200);
 
             if (myHp <= 0) {
                 myHp = 100;
-                // Респавн в безопасном месте
                 let spawnX, spawnZ;
                 do {
                     spawnX = (Math.random() - 0.5) * 80;
@@ -1387,7 +1416,6 @@
                 b.life -= delta;
                 let hit = false;
 
-                // Пули бьют игрока
                 if (b.owner === "bot") {
                     if (Math.hypot(b.mesh.position.x - camera.position.x, b.mesh.position.z - camera.position.z) < 1.0) {
                         hit = true;
@@ -1395,7 +1423,6 @@
                         spawnParticles(b.mesh.position, 0xff0000);
                     }
                 } 
-                // Пули игрока бьют ботов
                 else if (b.owner === "player") {
                     bots.forEach((bot, idx) => {
                         if (Math.hypot(b.mesh.position.x - bot.model.position.x, b.mesh.position.z - bot.model.position.z) < 1.2) {
@@ -1413,7 +1440,6 @@
                         }
                     });
                 }
-                // Пули игроков бьют других игроков
                 else {
                     for (let id in otherPlayers) {
                         if (id !== b.owner) {
@@ -1431,7 +1457,6 @@
                     }
                 }
 
-                // Пули бьют стены
                 walls.forEach(w => {
                     if (Math.abs(b.mesh.position.x - w.position.x) < w.scale.x / 2 && 
                         Math.abs(b.mesh.position.z - w.position.z) < w.scale.z / 2) {
@@ -1565,7 +1590,6 @@
             if (isEditingUI) return;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
-                // Игнорируем зону кнопок
                 let isRightBottom = (t.clientX > window.innerWidth - 180 && t.clientY > window.innerHeight - 180);
                 if (t.clientX > window.innerWidth / 3 && !isRightBottom) {
                     lookTouchId = t.identifier;
@@ -1740,12 +1764,10 @@
                     let nextZ = camera.position.z + moveVec.z * moveSpeed;
                     if (!checkCollision(camera.position.x, nextZ)) camera.position.z = nextZ;
 
-                    // Bhop Friction
                     if (onGround) {
                         currentSpeed = Math.max(10, currentSpeed - 25 * delta);
                     }
 
-                    // Звук шагов
                     if (onGround && performance.now() - lastStepTime > 400 - currentSpeed * 2) {
                         playSound('step');
                         lastStepTime = performance.now();
@@ -1754,7 +1776,7 @@
 
                 // Прыжок с зажатием (Hold Jump)
                 if (isJumpHeld && !onGround && jumpTimer < maxJumpHold) {
-                    velocityY += 25 * delta; // Дополнительный импульс
+                    velocityY += 25 * delta; 
                     jumpTimer += delta;
                 }
 
@@ -1772,7 +1794,7 @@
                     onGround = false;
                 }
 
-                // Ограничение карты (Арена 200x200)
+                // Ограничение карты
                 camera.position.x = Math.max(-98, Math.min(98, camera.position.x));
                 camera.position.z = Math.max(-98, Math.min(98, camera.position.z));
 
@@ -1781,12 +1803,10 @@
                     sendMove({ x: camera.position.x, z: camera.position.z, rotY: yaw });
                 }
 
-                // Обновление сущностей
                 updateBots(delta);
                 updateBullets(delta);
                 updateParticles(delta);
 
-                // HUD
                 document.getElementById('hudHp').innerText = Math.max(0, myHp);
                 document.getElementById('hudKills').innerText = myKills;
                 document.getElementById('hudSpeed').innerText = Math.round(currentSpeed);
